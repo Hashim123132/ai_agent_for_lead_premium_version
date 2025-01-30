@@ -9,7 +9,7 @@
 - [x] Schedule Booking in Google Calendar
 - [x] Create a save a Draft Email in Gmail (Replaceable with any Mail Service)
 - [ ] Change TimeZone from UTC to User Specific
-- [ ] Confirmation Call after Booking and Cron Job to schedule
+- [x] Confirmation Call after Booking and Cron Job to schedule
 - [ ] Add Voice Modality with providers (Twillio, Vapi, Bland)
 
 ## Directory Structure
