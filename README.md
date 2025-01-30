@@ -1,5 +1,26 @@
 # Appointment Booking Agents Vertical Starter Kit
 
+A modular and AI-powered appointment booking agent designed to streamline scheduling for businesses, starting with dental clinics. Built with LangGraph, Composio, and AI Telephony, this agent integrates Google Calendar and Gmail to manage appointments, send confirmations, and handle outbound phone calls. 
+
+Users can check available time slots, confirm bookings, and receive queue updates via email, call, or message. The system is highly customizable, supporting alternative CRM, mail services, and voice providers like Twilio or Vapi. Deployed on Vercel and LangGraph Cloud, with robust testing via LangSmith and LLM unit tests.
+
+## Tech Stack:
+- Agent : LangGraph, Composio (Tools Library), Voice Orchestrator (Bland.com)
+- LLMs: Gemini-2.0-flash-exp 
+- Interface (NextJS15)
+- Deployment (Vercel, LangGraph Cloud)
+- Tests (LangSmith, LLM Unit Tests Code.)
+- Development (IDE: VS-Code/Cursor) + Google Collab + Docker
+- SCM [GitHub] [panaversity/learn-agentic-ai/AGENTIC_PROTOTYPES/appointments_agent](https://github.com/panaversity/learn-agentic-ai/edit/main/AGENT_PROTOTYPES) (We will be actively develping it further here in this repo in live Agentic AI sessions.)
+- CRM/Calendar/System [Google Calendar, Gmail]
+
+## User Story
+* User Wants to Book an Appointment with Dentist Clinic
+* Share available time schedule (i.e: Monday 09-06 PM)
+* At what time can I come and my preferences are 4 PM DATE.
+* User wants to know about Wait Time and Queue Number.
+* User Booking Confirmation (email/phone call)
+
 ## Features
 
 - [x] Connect Google Calendar (Replaceable with any Calendar or CRM)
@@ -8,9 +29,15 @@
 - [x] Suggest TimeSlots and Confirm the final One with User
 - [x] Schedule Booking in Google Calendar
 - [x] Create a save a Draft Email in Gmail (Replaceable with any Mail Service)
+- [x] Confirmation Call after Booking Appointment using Bland API (Just replace the function call with any providor of your choice)
+- [ ] Cron Job to schedule calls
 - [ ] Change TimeZone from UTC to User Specific
-- [x] Confirmation Call after Booking and Cron Job to schedule
 - [ ] Add Voice Modality with providers (Twillio, Vapi, Bland)
+
+### Pending User Stories
+[ ] Business Active Hours
+[ ] Queue Number and Wait Time Flow
+[ ] If email is invalid or if phone don't dials try again later -- If not confirmed priority customer can take slot.
 
 ## Directory Structure
 
