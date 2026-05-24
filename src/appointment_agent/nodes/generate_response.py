@@ -2,23 +2,20 @@
 
 from typing import cast
 import datetime
-
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import AIMessage, trim_messages
 from langchain_core.runnables import RunnableConfig
 
 from appointment_agent.state import AppointmentAgentState
 from appointment_agent.prompts import AGENT_SYSTEM
-from appointment_agent.nodes._tools import schedule_tools_set
+from appointment_agent.nodes._tools import schedule_tools_set, make_confirmation_call
 
-from appointment_agent.tools.make_confirmation_call import make_confirmation_call
+model = ChatMistralAI(model = "mistral-small-latest")
 
-model = ChatGoogleGenerativeAI(model = "gemini-2.0-flash-exp")
-# model = ChatOpenAI(model="gpt-4o", temperature=1)
-
-# Bind tools to the model
-model_with_tools = model.bind_tools(schedule_tools_set + [make_confirmation_call])
-
+model_with_tools = model.bind_tools(
+    schedule_tools_set
+    + [make_confirmation_call]
+)
 async def generate_response(
     state: AppointmentAgentState, config: RunnableConfig
 ) -> dict[str, list[AIMessage]]:

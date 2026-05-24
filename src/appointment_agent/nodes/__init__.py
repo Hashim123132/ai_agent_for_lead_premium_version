@@ -7,8 +7,8 @@ It imports the following nodes:
 These nodes are included in the `__all__` list to specify the public API of this module.
 """
 
-from appointment_agent.nodes._tools import schedule_tools_write_node
+from appointment_agent.nodes._tools import schedule_tools_write_node as schedule_booking_tools_write_node
 from appointment_agent.nodes.generate_response import generate_response
-from appointment_agent.nodes.find_slots import find_slots
+from appointment_agent.nodes.find_slots import find_slots as find_car_availability
 
-__all__ = ["schedule_tools_write_node", "generate_response", "find_slots"]
+__all__ = ["schedule_booking_tools_write_node", "generate_response", "find_car_availability"]

@@ -9,6 +9,8 @@ readme = "README.md"
 license = { text = "Commercial" }
 requires-python = ">=3.9"
 dependencies = [
+    "gspread>=6.0.0",
+    "google-auth>=2.0.0",
     "langgraph>=0.2.6",
     "langchain-openai>=0.1.22",
     "langchain-google-genai>=2.0.8",
@@ -21,6 +23,8 @@ dependencies = [
     "langchain-groq>=0.2.1",
     "transformers>=4.46.2",
     "composio-langgraph>=0.6.19",
+    "langgraph-cli[inmem]>=0.4.3",
+    "langchain-mistralai>=0.2.12",
 ]
 
 

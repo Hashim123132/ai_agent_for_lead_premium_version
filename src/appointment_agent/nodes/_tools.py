@@ -3,9 +3,10 @@
 import os
 import dotenv
 import logging
-
+from appointment_agent.tools.get_available_cars import get_available_cars
 from langgraph.prebuilt import ToolNode
-from composio_langgraph import Action, ComposioToolSet
+from composio import Composio
+from composio_langgraph import LanggraphProvider
 from appointment_agent.tools.make_confirmation_call import make_confirmation_call
 
 # Configure logging
@@ -18,24 +19,31 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 dotenv.load_dotenv()
 
-# Initialize ComposioToolSet with API key from environment variables
-composio_toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
+# Initialize Composio with LanggraphProvider
+composio = Composio(provider=LanggraphProvider(), api_key=os.getenv("COMPOSIO_API_KEY"))
 
-# Get the required tools
-schedule_tools_set = composio_toolset.get_tools(
-    actions=[
-        Action.GOOGLECALENDAR_FIND_FREE_SLOTS,
-        Action.GOOGLECALENDAR_CREATE_EVENT,
-        Action.GMAIL_CREATE_EMAIL_DRAFT
-    ]
+# Get the required tools (fetched by slug)
+schedule_tools_set = composio.tools.get(
+    user_id="pg-test-9cd0c129-70a9-4e30-a087-36249fe06d7e",
+    tools=[
+        "GOOGLECALENDAR_FIND_FREE_SLOTS",
+        "GOOGLECALENDAR_CREATE_EVENT",
+        "GMAIL_CREATE_EMAIL_DRAFT",
+    ],
+)
+schedule_tools_set = schedule_tools_set + [get_available_cars]
+
+# Separate out write-only tools
+schedule_tools_write = composio.tools.get(
+    user_id="pg-test-9cd0c129-70a9-4e30-a087-36249fe06d7e",
+    tools=[
+        "GOOGLECALENDAR_CREATE_EVENT",
+        "GMAIL_CREATE_EMAIL_DRAFT",
+    ],
 )
 
-# Separate out 
-schedule_tools_write = composio_toolset.get_tools(
-    actions=[
-        Action.GOOGLECALENDAR_CREATE_EVENT,
-        Action.GMAIL_CREATE_EMAIL_DRAFT
-    ]
+schedule_tools_write_node = ToolNode(
+    schedule_tools_write
+    + [make_confirmation_call]
+    + [get_available_cars]
 )
-
-schedule_tools_write_node = ToolNode(schedule_tools_write + [make_confirmation_call])
