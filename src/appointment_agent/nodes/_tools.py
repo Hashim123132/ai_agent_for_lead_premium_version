@@ -4,6 +4,9 @@ import os
 import dotenv
 import logging
 from appointment_agent.tools.get_available_cars import get_available_cars
+from appointment_agent.tools.mark_car_unavailable import mark_car_unavailable
+from appointment_agent.tools.save_booking import save_booking
+from appointment_agent.tools.check_car_availability import check_car_availability
 from langgraph.prebuilt import ToolNode
 from composio import Composio
 from composio_langgraph import LanggraphProvider
@@ -31,7 +34,7 @@ schedule_tools_set = composio.tools.get(
         "GMAIL_CREATE_EMAIL_DRAFT",
     ],
 )
-schedule_tools_set = schedule_tools_set + [get_available_cars]
+schedule_tools_set = schedule_tools_set + [get_available_cars] + [mark_car_unavailable] + [save_booking] + [check_car_availability]
 
 # Separate out write-only tools
 schedule_tools_write = composio.tools.get(
@@ -46,4 +49,7 @@ schedule_tools_write_node = ToolNode(
     schedule_tools_write
     + [make_confirmation_call]
     + [get_available_cars]
+    + [check_car_availability]
+    + [mark_car_unavailable]
+    + [save_booking]
 )

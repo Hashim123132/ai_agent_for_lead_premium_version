@@ -1,147 +1,240 @@
-# Appointment Booking Agents Vertical Starter Kit
+<p align="center">
+  <h1 align="center">Hashim Car Rentals — AI Booking Agent</h1>
+  <p align="center">
+    AI-powered conversational car rental booking agent built with LangGraph.
+    <br />
+    Handles end-to-end reservations via Facebook Messenger — from car selection
+    and calendar slot lookup to booking confirmation and voice calls.
+  </p>
+  <p align="center">
+    <a href="#demo">View Demo</a>
+    ·
+    <a href="#features">Features</a>
+    ·
+    <a href="#getting-started">Getting Started</a>
+    ·
+    <a href="#architecture">Architecture</a>
+  </p>
+</p>
 
-A modular and AI-powered appointment booking agent designed to streamline scheduling for businesses, starting with dental clinics. Built with LangGraph, Composio, and AI Telephony, this agent integrates Google Calendar and Gmail to manage appointments, send confirmations, and handle outbound phone calls. 
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/framework-LangGraph-purple" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/LLM-Mistral%20AI-orange" alt="Mistral AI" />
+  <img src="https://img.shields.io/badge/integration-Facebook%20Messenger-1877F2" alt="Facebook Messenger" />
+  <img src="https://img.shields.io/badge/license-Commercial-red" alt="License" />
+</p>
 
-Users can check available time slots, confirm bookings, and receive queue updates via email, call, or message. The system is highly customizable, supporting alternative CRM, mail services, and voice providers like Twilio or Vapi. Deployed on Vercel and LangGraph Cloud, with robust testing via LangSmith and LLM unit tests.
+---
 
-## Tech Stack:
-- Agent : LangGraph, Composio (Tools Library), Voice Orchestrator (Bland.com)
-- LLMs: Gemini-2.0-flash-exp 
-- Interface (NextJS15)
-- Deployment (Vercel, LangGraph Cloud)
-- Tests (LangSmith, LLM Unit Tests Code.)
-- Development (IDE: VS-Code/Cursor) + Google Collab + Docker
-- SCM [GitHub] [panaversity/learn-agentic-ai/AGENTIC_PROTOTYPES/appointments_agent](https://github.com/panaversity/learn-agentic-ai/edit/main/AGENT_PROTOTYPES) (We will be actively develping it further here in this repo in live Agentic AI sessions.)
-- CRM/Calendar/System [Google Calendar, Gmail]
+## Demo
 
-## User Story
-* User Wants to Book an Appointment with Dentist Clinic
-* Share available time schedule (i.e: Monday 09-06 PM)
-* At what time can I come and my preferences are 4 PM DATE.
-* User wants to know about Wait Time and Queue Number.
-* User Booking Confirmation (email/phone call)
+![Hashim Car Rentals AI Booking Agent Demo](assets/demo.gif)
+
+> *Place your demo GIF at `assets/demo.gif` showing the agent in action on
+> Facebook Messenger — browsing cars, checking availability, and completing a
+> booking.*
+
+---
 
 ## Features
 
-- [x] Connect Google Calendar (Replaceable with any Calendar or CRM)
-- [x] Greet Users and Collect basic Info
-- [x] Check for Available Time Slots for the Dental Clinic (Can be any Business)
-- [x] Suggest TimeSlots and Confirm the final One with User
-- [x] Schedule Booking in Google Calendar
-- [x] Create a save a Draft Email in Gmail (Replaceable with any Mail Service)
-- [x] Confirmation Call after Booking Appointment using Bland API (Just replace the function call with any providor of your choice)
-- [ ] Cron Job to schedule calls
-- [ ] Change TimeZone from UTC to User Specific
-- [ ] Add Voice Modality with providers (Twillio, Vapi, Bland)
+- **Car Inventory Management** — Browse available cars and check individual car
+  availability from Google Sheets
+- **Smart Calendar Slot Lookup** — Checks Google Calendar for free time slots
+  matching pickup and return windows
+- **End-to-End Booking** — Creates Google Calendar events, saves bookings to
+  Google Sheets, and marks cars as unavailable
+- **Gmail Confirmation Drafts** — Auto-generates confirmation email drafts with
+  full booking details
+- **Outbound Voice Calls** — Makes confirmation calls via Bland.ai API
+- **Facebook Messenger Integration** — Full webhook server with typing
+  indicators and conversation history
+- **Multi-Provider LLM Support** — Defaults to Mistral AI, swappable to OpenAI,
+  Gemini, or Groq
+- **Dockerized Deployment** — Ships with Docker Compose, PostgreSQL, Redis, and
+  optional Cloudflare Tunnel
 
-### Pending User Stories
-[ ] Business Active Hours
-[ ] Queue Number and Wait Time Flow
-[ ] If email is invalid or if phone don't dials try again later -- If not confirmed priority customer can take slot.
+---
 
-## Directory Structure
+## Tech Stack
 
-- All prototyping notebooks are in the `prototypes` directory
-- All final agents live in the `src` directory
+| Category | Technology |
+|----------|------------|
+| Agent Framework | LangGraph (StateGraph, ToolNode) |
+| LLM | Mistral AI (`mistral-small-latest`), swappable |
+| Tool Integration | Composio (Google Calendar, Gmail) |
+| Server | FastAPI + uvicorn |
+| Channel | Facebook Messenger (Graph API v18.0) |
+| Spreadsheets | Google Sheets via gspread |
+| Voice | Bland.ai |
+| Persistence | PostgreSQL 16, Redis 6 |
+| Containerization | Docker, Docker Compose |
+| Web Search | Tavily |
+| CI/CD | GitHub Actions (ruff, mypy, codespell, pytest) |
+
+---
+
+## Architecture
+
+```
+                    +---------------------+
+                    |  Facebook Messenger  |
+                    +----------+----------+
+                               |
+                    HTTP POST /facebook/webhook
+                               |
+                    +----------v----------+
+                    |   src/server.py      |
+                    |   (FastAPI)          |
+                    +----------+----------+
+                               | ainvoke()
+                    +----------v----------+
+                    | appointment_agent   |
+                    |  graph.py           |
+                    |  (StateGraph)       |
+                    +----------+----------+
+                               |
+              +----------------+----------------+
+              |                |                |
+      +-------v-------+  +----v--------+  +----v--------+
+      |   agent node  |  | find_car_   |  | booking_    |
+      | (LLM generate |  | availability|  | tools node  |
+      |  response +   |  | (Calendar   |  | (ToolNode)  |
+      |  tool binding)|  |  free slots)|  +-------------+
+      +-------+-------+  +-------------+       |
+              |               |                |
+              |               |                +-- Google Calendar (create event)
+              |               |                +-- Gmail (create draft)
+              |               |                +-- mark_car_unavailable
+              |               |                +-- save_booking
+              |               |                +-- Bland.ai (confirmation call)
+              |               |
+              +-------+-------+
+                      |
+               Google Calendar
+               (find free slots)
+
+  External data stores:
+    - Google Sheets: Cars inventory, Bookings log
+    - Google Drive: Service account credentials
+```
+
+### Graph Flow
+
+1. **START** → `agent` node — LLM generates a response and may invoke tools
+2. **Conditional routing** based on the last tool call:
+   - `GOOGLECALENDAR_FIND_FREE_SLOTS` → `find_car_availability` node
+   - Any other tool → `booking_tools` node
+   - No tool calls → END
+3. `find_car_availability` / `booking_tools` → back to `agent` (loop)
+
+---
 
 ## Getting Started
 
 ### Prerequisites
 
-1. Docker
-2. Composio, Google AI Studio and LangSmith API Key
-3. Setup the following either in Composio dashboard or through CLI/Jupyter Notebook:
-   ```bash
-   composio add googlecalendar gmail
-   composio triggers enable GMAIL_NEW_GMAIL_MESSAGE
-   ```
+- Docker & Docker Compose
+- API keys for: **Composio**, **Google AI Studio**, **LangSmith**, **Mistral AI**
+- A Google Cloud project with Calendar, Gmail, and Sheets APIs enabled
+- A Facebook Page and Meta Developer App
 
-### Local Setup
+### Setup
 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/...
-   cd ...
+   git clone https://github.com/your-org/hashim-car-rentals.git
+   cd hashim-car-rentals
    ```
 
-2. **Create a `.env` file:**
+2. **Configure environment:**
 
    ```bash
    cp .env.example .env
    ```
 
-   Update the environment variables as needed.
+   Fill in all required API keys and tokens in `.env`.
 
-3. **Run LangGraph Server:**
+3. **Authenticate Google services via Composio:**
 
-   #### Using Docker
-
-   - Install Docker Desktop
-   - Open Docker Desktop
-   - Run container:
-     ```bash
-     docker compose up
-     ```
-   - Or run in detached mode:
-     ```bash
-     docker compose up -d
-     ```
-
-4. **Access LangGraph Studio**
-   - Open [LangGraph Studio](https://smith.langchain.com/studio/thread?baseUrl=http%3A%2F%2F127.0.0.1%3A8123)
-
-### Development
-
-**Applying Changes:**
-
-1. Stop the container:
    ```bash
-   docker compose down
+   composio add googlecalendar gmail
+   composio triggers enable GMAIL_NEW_GMAIL_MESSAGE
    ```
-2. Restart the container:
+
+4. **Launch with Docker:**
+
    ```bash
    docker compose up -d
    ```
-   Note: Changes outside the `src` directory require rebuilding the image.
 
-### Alternative Setup Methods
+   The LangGraph API server will be available at `http://localhost:8123`.
 
-#### A. Using LangGraph CLI
+5. **Open LangGraph Studio:**
 
-1. Install uv package manager:
+   [http://localhost:8123](http://localhost:8123)
 
-   ```bash
-   pip install uv
-   ```
+### Development Workflow
 
-2. Create and activate virtual environment:
-
-   ```bash
-   uv venv
-   source .venv/bin/activate
-   ```
-
-3. Install packages from pyproject.toml:
-
-   ```bash
-   uv run
-   ```
-
-4. Run LangGraph Server:
-   ```bash
-   uv pip install langgraph-cli
-   uv run langgraph up
-   ```
-   Note: If you encounter errors, stop all containers, run `docker system prune`, and try again.
-
-#### B. Using Google Gemini Instead of OpenAI
-
-To switch models, update line 26 in `configuration.py`:
-
-```python
-# From:
-default="openai/gpt-4o"
-# To:
-default="google_genai/gemini-1.5-flash"
+```bash
+docker compose down          # Stop containers
+# … edit source code in src/ …
+docker compose up -d         # Restart (src/ is bind-mounted, no rebuild needed)
 ```
+
+Rebuild the image when dependencies or files outside `src/` change:
+
+```bash
+docker compose build --no-cache && docker compose up -d
+```
+
+---
+
+## Project Structure
+
+```
+.
+├── assets/                          # Demo GIF and media
+├── compose.yaml                     # Docker Compose (Redis, Postgres, API, Cloudflare)
+├── Dockerfile                       # LangGraph API image
+├── langgraph.json                   # LangGraph project config
+├── Makefile                         # Dev tasks (lint, test, format)
+├── pyproject.toml                   # Project metadata & dependencies
+├── .env.example                     # Environment variable template
+├── src/
+│   ├── server.py                    # FastAPI webhook server (Facebook Messenger)
+│   ├── appointment_agent/           # Primary: car rental booking agent
+│   │   ├── graph.py                 # StateGraph definition
+│   │   ├── state.py                 # State schema
+│   │   ├── configuration.py         # Configurable parameters
+│   │   ├── prompts.py               # System prompt (Sam, Hashim Car Rentals)
+│   │   ├── utils.py                 # Helpers (message extraction, model loading)
+│   │   ├── nodes/
+│   │   │   ├── generate_response.py # LLM response generation
+│   │   │   ├── find_slots.py        # Google Calendar free-slot lookup
+│   │   │   └── _tools.py            # Tool binding & ToolNode
+│   │   └── tools/
+│   │       ├── get_available_cars.py
+│   │       ├── check_car_availability.py
+│   │       ├── save_booking.py
+│   │       ├── mark_car_unavailable.py
+│   │       └── make_confirmation_call.py
+
+├── tests/
+│   ├── unit_tests/
+│   └── integration_tests/
+│       ├── test_graph.py
+│       └── cassettes/               # VCR recordings
+└── prototypes/
+    └── scheduling_agent.ipynb       # Early exploration notebook
+```
+
+---
+
+## License
+
+Commercial License. See [LICENSE](LICENSE) for details.
+
+Copyright &copy; 2024 Panaversity.

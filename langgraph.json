@@ -1,7 +1,6 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "react_agent": "./src/react_agent/graph.py:react_graph",
     "appointment_agent": "./src/appointment_agent/graph.py:appointment_agent_graph"
   },
   "env": ".env"

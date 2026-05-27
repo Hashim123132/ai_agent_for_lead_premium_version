@@ -25,6 +25,8 @@ dependencies = [
     "composio-langgraph>=0.6.19",
     "langgraph-cli[inmem]>=0.4.3",
     "langchain-mistralai>=0.2.12",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
 ]
 
 
@@ -36,9 +38,8 @@ requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["react_agent", "appointment_agent"]
+packages = ["appointment_agent"]
 [tool.setuptools.package-dir]
-"react_agent" = "src/react_agent"
 "appointment_agent" = "src/appointment_agent"
 
 
