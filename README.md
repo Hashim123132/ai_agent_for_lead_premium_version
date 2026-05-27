@@ -31,9 +31,7 @@
 
 ![Hashim Car Rentals AI Booking Agent Demo](assets/demo.gif)
 
-> *Place your demo GIF at `assets/demo.gif` showing the agent in action on
-> Facebook Messenger — browsing cars, checking availability, and completing a
-> booking.*
+
 
 ---
 
