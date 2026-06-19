@@ -10,7 +10,6 @@ from appointment_agent.tools.check_car_availability import check_car_availabilit
 from langgraph.prebuilt import ToolNode
 from composio import Composio
 from composio_langgraph import LanggraphProvider
-from appointment_agent.tools.make_confirmation_call import make_confirmation_call
 
 # Configure logging
 logging.basicConfig(
@@ -47,7 +46,6 @@ schedule_tools_write = composio.tools.get(
 
 schedule_tools_write_node = ToolNode(
     schedule_tools_write
-    + [make_confirmation_call]
     + [get_available_cars]
     + [check_car_availability]
     + [mark_car_unavailable]

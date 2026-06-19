@@ -1,14 +1,6 @@
 version: "3.8"
 
 services:
-  langgraph-redis:
-    image: redis:6
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 1s
-      retries: 5
-
   langgraph-postgres:
     image: postgres:16
     ports:
@@ -38,7 +30,6 @@ services:
         target: /deps/react-agents/src
     command: ["langgraph", "dev", "--port", "8000"]
     environment:
-      REDIS_URI: redis://langgraph-redis:6379
       LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
       DATABASE_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
 

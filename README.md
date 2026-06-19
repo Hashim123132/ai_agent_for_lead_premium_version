@@ -217,8 +217,7 @@ docker compose build --no-cache && docker compose up -d
 │   │       ├── get_available_cars.py
 │   │       ├── check_car_availability.py
 │   │       ├── save_booking.py
-│   │       ├── mark_car_unavailable.py
-│   │       └── make_confirmation_call.py
+│   │       └── mark_car_unavailable.py
 
 ├── tests/
 │   ├── unit_tests/
