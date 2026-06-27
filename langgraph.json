@@ -1,7 +1,8 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "appointment_agent": "./src/appointment_agent/graph.py:appointment_agent_graph"
+    "appointment_agent": "./src/appointment_agent/graph.py:appointment_agent_graph",
+    "marketing_agent": "./src/marketing_agent/graph.py:marketing_agent_graph"
   },
   "env": ".env"
 }

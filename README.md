@@ -50,8 +50,6 @@
   indicators and conversation history
 - **Multi-Provider LLM Support** — Defaults to Mistral AI, swappable to OpenAI,
   Gemini, or Groq
-- **Dockerized Deployment** — Ships with Docker Compose, PostgreSQL, Redis, and
-  optional Cloudflare Tunnel
 
 ---
 
@@ -66,8 +64,6 @@
 | Channel | Facebook Messenger (Graph API v18.0) |
 | Spreadsheets | Google Sheets via gspread |
 | Voice | Bland.ai |
-| Persistence | PostgreSQL 16, Redis 6 |
-| Containerization | Docker, Docker Compose |
 | Web Search | Tavily |
 | CI/CD | GitHub Actions (ruff, mypy, codespell, pytest) |
 
@@ -133,7 +129,7 @@
 
 ### Prerequisites
 
-- Docker & Docker Compose
+- Python 3.11+ and `uv` installed
 - API keys for: **Composio**, **Google AI Studio**, **LangSmith**, **Mistral AI**
 - A Google Cloud project with Calendar, Gmail, and Sheets APIs enabled
 - A Facebook Page and Meta Developer App
@@ -162,10 +158,11 @@
    composio triggers enable GMAIL_NEW_GMAIL_MESSAGE
    ```
 
-4. **Launch with Docker:**
+4. **Install dependencies and launch:**
 
    ```bash
-   docker compose up -d
+   uv sync
+   uv run langgraph dev
    ```
 
    The LangGraph API server will be available at `http://localhost:8123`.
@@ -177,15 +174,8 @@
 ### Development Workflow
 
 ```bash
-docker compose down          # Stop containers
-# … edit source code in src/ …
-docker compose up -d         # Restart (src/ is bind-mounted, no rebuild needed)
-```
-
-Rebuild the image when dependencies or files outside `src/` change:
-
-```bash
-docker compose build --no-cache && docker compose up -d
+# Stop the server (Ctrl+C), edit source code in src/, then restart:
+uv run langgraph dev
 ```
 
 ---
@@ -195,8 +185,6 @@ docker compose build --no-cache && docker compose up -d
 ```
 .
 ├── assets/                          # Demo GIF and media
-├── compose.yaml                     # Docker Compose (Redis, Postgres, API, Cloudflare)
-├── Dockerfile                       # LangGraph API image
 ├── langgraph.json                   # LangGraph project config
 ├── Makefile                         # Dev tasks (lint, test, format)
 ├── pyproject.toml                   # Project metadata & dependencies

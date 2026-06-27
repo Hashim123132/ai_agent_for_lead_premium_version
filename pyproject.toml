@@ -38,9 +38,21 @@ requires = ["setuptools>=73.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["appointment_agent"]
+packages = [
+    "appointment_agent",
+    "marketing_agent",
+    "marketing_agent.tools",
+    "marketing_agent.nodes",
+    "shared",
+    "shared.integrations",
+]
 [tool.setuptools.package-dir]
 "appointment_agent" = "src/appointment_agent"
+"marketing_agent" = "src/marketing_agent"
+"marketing_agent.tools" = "src/marketing_agent/tools"
+"marketing_agent.nodes" = "src/marketing_agent/nodes"
+"shared" = "src/shared"
+"shared.integrations" = "src/shared/integrations"
 
 
 [tool.setuptools.package-data]

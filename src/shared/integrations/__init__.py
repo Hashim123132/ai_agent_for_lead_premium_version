@@ -1,0 +1,1 @@
+"""Shared integrations (Google Sheets, external APIs)."""

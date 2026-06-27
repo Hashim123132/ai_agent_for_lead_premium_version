@@ -1,15 +1,22 @@
-"""FastAPI server for Facebook Messenger webhook integration."""
+"""FastAPI server for Facebook Messenger webhook + admin API."""
 
-import os
 import asyncio
+import json
 import logging
+import os
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import requests
 
 from appointment_agent import appointment_agent_graph
+from marketing_agent import marketing_agent_graph
+from shared.campaign_service import approve_campaign, list_campaigns, reject_campaign, save_campaign
+from shared.integrations.sheets_client import get_all_records
 
 load_dotenv()
 
@@ -21,11 +28,26 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 VERIFY_TOKEN = os.getenv("FB_VERIFY_TOKEN", "hashim_webhook_123")
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 API_VERSION = "v18.0"
 
 conversations: dict[str, list] = defaultdict(list)
+
+PROGRESS_LABELS = {
+    "get_booking_metrics": "Fetching booking data...",
+    "search_competitor_ads": "Analyzing competitor ads...",
+    "search_market_trends": "Analyzing market trends...",
+    "save_campaign_draft": "Finalizing campaign draft...",
+}
 
 
 def _send_action(sender_id: str, action: str):
@@ -125,6 +147,160 @@ async def webhook(request: Request):
             asyncio.create_task(_handle_message(sender_id, text))
 
     return {"status": "ok"}
+
+
+@app.post("/marketing/generate")
+async def run_marketing(request: Request):
+    """Stream marketing agent execution with real-time progress via SSE."""
+    body = await request.json()
+    prompt = body.get("prompt", "Analyze our current data and suggest a campaign for next weekend.")
+    market = body.get("market", {})
+    city = market.get("city", "")
+    country = market.get("country", "")
+
+    logger.info("Marketing agent invoked with prompt: %s | market: %s, %s", prompt[:100], city, country)
+
+    async def event_stream():
+        state = {
+            "messages": [("user", prompt)],
+            "market": {"city": city, "country": country},
+        }
+
+        try:
+            final_messages = None
+
+            async for event in marketing_agent_graph.astream_events(state, version="v2"):
+                kind = event["event"]
+                name = event.get("name", "")
+
+                if kind == "on_tool_start" and name in PROGRESS_LABELS:
+                    msg = json.dumps({"type": "progress", "message": PROGRESS_LABELS[name]})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chat_model_start":
+                    msg = json.dumps({"type": "progress", "message": "Generating campaign strategy..."})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chain_end":
+                    output = event["data"].get("output", {})
+                    if isinstance(output, dict) and "messages" in output:
+                        final_messages = output["messages"]
+
+            if not final_messages:
+                msg = json.dumps({"type": "error", "error": "No messages returned from graph."})
+                yield f"data: {msg}\n\n"
+                return
+
+            response_text = None
+            for m in reversed(final_messages):
+                if hasattr(m, "content") and m.content and not getattr(m, "tool_calls", None):
+                    response_text = m.content
+                    break
+
+            if not response_text:
+                msg = json.dumps({"type": "error", "error": "No text response generated."})
+                yield f"data: {msg}\n\n"
+                return
+
+            campaign_id = save_campaign(prompt, response_text, city=city, country=country)
+            result = json.dumps({
+                "type": "result",
+                "status": "ok",
+                "response": response_text,
+                "campaign_id": campaign_id,
+            })
+            yield f"data: {result}\n\n"
+
+        except Exception as e:
+            logger.error("Marketing agent error: %s", e, exc_info=True)
+            err = json.dumps({"type": "error", "error": str(e)})
+            yield f"data: {err}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/campaign/approve")
+async def approve(request: Request):
+    body = await request.json()
+    campaign_id = body.get("campaign_id", "")
+    if not campaign_id:
+        return {"status": "error", "error": "campaign_id is required"}
+    ok = approve_campaign(campaign_id)
+    if ok:
+        return {"status": "ok"}
+    return {"status": "error", "error": "Campaign not found"}
+
+
+@app.post("/campaign/reject")
+async def reject(request: Request):
+    body = await request.json()
+    campaign_id = body.get("campaign_id", "")
+    if not campaign_id:
+        return {"status": "error", "error": "campaign_id is required"}
+    ok = reject_campaign(campaign_id)
+    if ok:
+        return {"status": "ok"}
+    return {"status": "error", "error": "Campaign not found"}
+
+
+@app.get("/campaigns")
+async def campaigns():
+    try:
+        records = list_campaigns()
+        return {"status": "ok", "campaigns": records}
+    except Exception as e:
+        logger.error("Error listing campaigns: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/metrics")
+async def metrics():
+    try:
+        cars = get_all_records("Cars")
+        bookings = get_all_records("Bookings")
+
+        total_cars = len(cars)
+        unavailable = sum(
+            1 for c in cars if str(c.get("Status", "")).strip().lower() == "unavailable"
+        )
+        occupancy_rate = round(unavailable / total_cars * 100, 1) if total_cars else 0
+
+        total_bookings = len(bookings)
+
+        car_counts = {}
+        for b in bookings:
+            car = str(b.get("car", b.get("Car", ""))).strip()
+            if car:
+                car_counts[car] = car_counts.get(car, 0) + 1
+
+        popular = sorted(car_counts.items(), key=lambda x: -x[1])[:3]
+
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        recent = 0
+        for b in bookings:
+            raw_date = b.get("booking_date", b.get("Booking Date", ""))
+            if raw_date:
+                try:
+                    dt = datetime.fromisoformat(str(raw_date).replace("Z", ""))
+                    if dt > thirty_days_ago:
+                        recent += 1
+                except (ValueError, TypeError):
+                    pass
+
+        return {
+            "status": "ok",
+            "metrics": {
+                "totalCars": total_cars,
+                "availableCars": total_cars - unavailable,
+                "occupancyRate": occupancy_rate,
+                "totalBookings": total_bookings,
+                "recentBookings": recent,
+                "popularCars": [{"name": name, "count": count} for name, count in popular],
+            },
+        }
+    except Exception as e:
+        logger.error("Error fetching metrics: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/health")
