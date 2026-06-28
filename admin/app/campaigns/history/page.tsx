@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { approveCampaign, fetchCampaigns, rejectCampaign } from "@/lib/api";
+import { approveCampaign, evaluateCampaign, fetchCampaigns, rejectCampaign } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -16,6 +16,10 @@ import {
   Filter,
   ThumbsUp,
   ThumbsDown,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 
 type CampaignRecord = {
@@ -32,6 +36,9 @@ type CampaignRecord = {
   rationale: string;
   market_city: string;
   market_country: string;
+  result_score?: string;
+  baseline_metrics_json?: string;
+  evaluated_at?: string;
 };
 
 function statusBadge(status: string) {
@@ -73,6 +80,8 @@ export default function CampaignHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [evaluateLoading, setEvaluateLoading] = useState<string | null>(null);
+  const [evaluateError, setEvaluateError] = useState<string | null>(null);
   const [filterCountry, setFilterCountry] = useState("");
   const [filterCity, setFilterCity] = useState("");
 
@@ -110,6 +119,29 @@ export default function CampaignHistoryPage() {
       );
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleEvaluate(campaignId: string) {
+    setEvaluateLoading(campaignId);
+    setEvaluateError(null);
+    try {
+      const result = await evaluateCampaign(campaignId);
+      if (result.status === "error") {
+        setEvaluateError(result.error ?? "Evaluation failed.");
+        return;
+      }
+      setCampaigns((prev) =>
+        prev.map((c) =>
+          c.campaign_id === campaignId
+            ? { ...c, result_score: String(result.score ?? ""), evaluated_at: result.evaluated_at ?? "" }
+            : c,
+        ),
+      );
+    } catch (e) {
+      setEvaluateError(e instanceof Error ? e.message : "Evaluation failed.");
+    } finally {
+      setEvaluateLoading(null);
     }
   }
 
@@ -336,6 +368,50 @@ export default function CampaignHistoryPage() {
                   )}
                   <>
                     <Separator />
+
+                    {c.status === "Approved" && c.result_score && (
+                      <div className="rounded-md border bg-muted/30 p-3">
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">
+                          Campaign Impact
+                        </p>
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Score</p>
+                            <p className="text-lg font-bold">{c.result_score}/10</p>
+                          </div>
+                          {c.evaluated_at && (
+                            <p className="text-xs text-muted-foreground">
+                              Evaluated {formatDate(c.evaluated_at)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {c.status === "Approved" && !c.result_score && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          Evaluate after at least 7 days to measure impact.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEvaluate(c.campaign_id);
+                          }}
+                          disabled={evaluateLoading === c.campaign_id}
+                        >
+                          {evaluateLoading === c.campaign_id ? (
+                            <Loader2 className="mr-1 size-3.5 animate-spin" />
+                          ) : (
+                            <BarChart3 className="mr-1 size-3.5" />
+                          )}
+                          Evaluate
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-end gap-2">
                       {c.status !== "Rejected" && (
                         <Button
@@ -373,6 +449,10 @@ export default function CampaignHistoryPage() {
                         </Button>
                       )}
                     </div>
+
+                    {evaluateError && (
+                      <p className="text-xs text-destructive">{evaluateError}</p>
+                    )}
                   </>
                 </CardContent>
               )}

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { fetchMetrics } from "@/lib/api";
+import { fetchCampaigns, fetchMetrics } from "@/lib/api";
 import {
   Loader2,
   Car,
@@ -17,6 +17,7 @@ import {
   TrendingUp,
   Users,
   AlertCircle,
+  BarChart3,
 } from "lucide-react";
 
 type MetricsData = {
@@ -26,6 +27,17 @@ type MetricsData = {
   totalBookings: number;
   recentBookings: number;
   popularCars: Array<{ name: string; count: number }>;
+};
+
+type CampaignSummary = {
+  campaign_id: string;
+  campaign_name: string;
+  status: string;
+  result_score?: string;
+  evaluated_at?: string;
+  market_city?: string;
+  market_country?: string;
+  created_at?: string;
 };
 
 function MetricCard({
@@ -79,21 +91,30 @@ function MetricCard({
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
+  const [evaluated, setEvaluated] = useState<CampaignSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadMetrics();
+    loadAll();
   }, []);
 
-  async function loadMetrics() {
+  async function loadAll() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMetrics();
-      setMetrics(data.metrics);
+      const [mData, cData] = await Promise.all([
+        fetchMetrics(),
+        fetchCampaigns(),
+      ]);
+      setMetrics(mData.metrics);
+      setEvaluated(
+        cData.campaigns.filter(
+          (c: CampaignSummary) => c.status === "Approved" && c.result_score,
+        ),
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load metrics.");
+      setError(e instanceof Error ? e.message : "Failed to load data.");
     } finally {
       setLoading(false);
     }
@@ -173,6 +194,40 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium">{car.name}</span>
                   </div>
                   <Badge variant="secondary">{car.count} bookings</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {evaluated.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="size-4 text-muted-foreground" />
+              <CardTitle className="text-base">Campaign Impact</CardTitle>
+            </div>
+          </CardHeader>
+          <Separator />
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              {evaluated.map((c) => (
+                <div key={c.campaign_id} className="flex items-center justify-between rounded-md border p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {c.campaign_name || "Campaign"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {[c.market_city, c.market_country].filter(Boolean).join(", ") || "—"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Score</p>
+                      <p className="text-lg font-bold">{c.result_score}/10</p>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

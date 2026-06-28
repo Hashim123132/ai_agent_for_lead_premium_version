@@ -15,7 +15,8 @@ import requests
 
 from appointment_agent import appointment_agent_graph
 from marketing_agent import marketing_agent_graph
-from shared.campaign_service import approve_campaign, list_campaigns, reject_campaign, save_campaign
+from shared.ad_suggestions import analyze_ads, search_competitor_ads
+from shared.campaign_service import approve_campaign, evaluate_campaign, list_campaigns, reject_campaign, save_campaign
 from shared.integrations.sheets_client import get_all_records
 
 load_dotenv()
@@ -243,6 +244,17 @@ async def reject(request: Request):
     return {"status": "error", "error": "Campaign not found"}
 
 
+@app.post("/campaign/evaluate")
+async def evaluate(request: Request):
+    body = await request.json()
+    campaign_id = body.get("campaign_id", "")
+    if not campaign_id:
+        return {"status": "error", "error": "campaign_id is required"}
+    window_days = body.get("window_days", 7)
+    result = evaluate_campaign(campaign_id, window_days=window_days)
+    return result
+
+
 @app.get("/campaigns")
 async def campaigns():
     try:
@@ -301,6 +313,38 @@ async def metrics():
     except Exception as e:
         logger.error("Error fetching metrics: %s", e, exc_info=True)
         return {"status": "error", "error": str(e)}
+
+
+@app.post("/ad-suggestions/search")
+async def ad_suggestions_search(request: Request):
+    """Search competitor ad images + AI pattern analysis via SSE."""
+    body = await request.json()
+    country = body.get("country", "")
+    city = body.get("city", "")
+    goal = body.get("goal", "")
+    mode = body.get("mode", "web")
+
+    logger.info(
+        "Ad suggestions search: mode=%s city=%s country=%s goal=%s",
+        mode,
+        city,
+        country,
+        goal,
+    )
+
+    async def event_stream():
+        try:
+            ads = await search_competitor_ads(mode, city, country, goal)
+            yield f"data: {json.dumps({'type': 'ads', 'ads': ads})}\n\n"
+
+            analysis = await analyze_ads(ads, mode, city, country, goal)
+            yield f"data: {json.dumps({'type': 'analysis', 'analysis': analysis})}\n\n"
+
+        except Exception as e:
+            logger.error("Ad suggestions error: %s", e, exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @app.get("/health")

@@ -9,6 +9,7 @@ import {
   Settings,
   Newspaper,
   History,
+  Lightbulb,
 } from "lucide-react";
 
 type NavItem = {
@@ -30,6 +31,7 @@ const navGroups: (NavItem | NavGroup)[] = [
     children: [
       { href: "/campaigns", label: "Generator", icon: Newspaper },
       { href: "/campaigns/history", label: "History", icon: History },
+      { href: "/ad-suggestions", label: "Ad Suggestions", icon: Lightbulb },
     ],
   },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
