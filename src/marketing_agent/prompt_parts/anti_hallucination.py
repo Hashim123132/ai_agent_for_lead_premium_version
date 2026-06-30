@@ -6,7 +6,7 @@ Convert validated evidence into max 5 short business insights. Keep each to one 
 
 Examples:
 ✓ Occupancy critically low at 25%
-✓ Competitors promoting family SUVs (Sixt, Avis)
+✓ relevants promoting family SUVs (Sixt, Avis)
 ✓ Family weekend getaway trend detected
 ⚠ No historical campaign data available
 

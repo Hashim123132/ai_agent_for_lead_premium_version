@@ -12,7 +12,7 @@ Based on the signals, produce a recommendation with these fields:
 Track every numeric claim internally with [SOURCE: source_name] for validation.
 These tags are stripped before final output — do NOT include them in the rendered report.
 
-If competitor/trend data unavailable, start the recommendation with:
+If relevant/trend data unavailable, start the recommendation with:
 "Note: Recommendation generated using partial evidence."
 
 Never include hardcoded growth claims like "increase occupancy to 50%". Always frame as
@@ -22,5 +22,5 @@ Never replace unavailable search results with industry averages, assumptions, or
 knowledge — unless explicitly requested. If you lack data, say so.
 
 Always tie your recommendation to the data. Never suggest discounts above 30% unless
-competitor data shows they are offering aggressive discounts.
+relevant data shows they are offering aggressive discounts.
 """

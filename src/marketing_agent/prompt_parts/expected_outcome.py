@@ -5,12 +5,12 @@ STAGE 5: GENERATE OUTCOME (internal — do NOT output this)
 Determine which outcome type applies and write one line:
 
 Type 1 — External Market Outcome:
-If competitor_search or market_trends contains measured outcomes (booking uplift %,
+If relevant_search or market_trends contains measured outcomes (booking uplift %,
 demand %, conversion %, occupancy change):
   → Cite as external observations only.
   → Use cautious wording: "may", "suggests", "observed externally".
-  → Never translate competitor numbers directly into Hashim expected bookings.
-  → Track internally with [SOURCE: competitor_search] or [SOURCE: market_trends].
+  → Never translate relevant numbers directly into Hashim expected bookings.
+  → Track internally with [SOURCE: relevant_search] or [SOURCE: market_trends].
     Stripped before final output.
 
 Type 2 — Internal Forecast Outcome:

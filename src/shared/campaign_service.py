@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from shared.integrations.sheets_client import append_row, ensure_headers, get_all_records, update_cell
+from shared.metrics_service import get_current_metrics, save_daily_metrics
 
 CAMPAIGN_HEADERS = [
     "campaign_name",
@@ -24,53 +25,17 @@ CAMPAIGN_HEADERS = [
     "baseline_metrics_json",
     "evaluated_at",
     "evaluation_window_days",
+    "approved_at",
+    "is_active",
 ]
 
 SHEET_NAME = "Campaign Drafts"
 
 
-def _read_current_metrics() -> dict:
-    """Read current booking metrics for snapshot and evaluation."""
-    cars = get_all_records("Cars")
-    bookings = get_all_records("Bookings")
-
-    total_cars = len(cars)
-    unavailable = sum(1 for c in cars if str(c.get("Status", "")).strip().lower() == "unavailable")
-    occupancy = round(unavailable / total_cars * 100, 1) if total_cars else 0
-    total_bookings = len(bookings)
-
-    thirty_days_ago = datetime.now() - timedelta(days=30)
-    recent = 0
-    for b in bookings:
-        raw_date = b.get("booking_date", b.get("Booking Date", ""))
-        if raw_date:
-            try:
-                dt = datetime.fromisoformat(str(raw_date).replace("Z", ""))
-                if dt > thirty_days_ago:
-                    recent += 1
-            except (ValueError, TypeError):
-                pass
-
-    car_counts = {}
-    for b in bookings:
-        car = str(b.get("car", b.get("Car", ""))).strip()
-        if car:
-            car_counts[car] = car_counts.get(car, 0) + 1
-
-    popular = [name for name, _ in sorted(car_counts.items(), key=lambda x: -x[1])[:3]]
-
-    return {
-        "occupancy": occupancy,
-        "bookings": total_bookings,
-        "bookings_30d": recent,
-        "popular_cars": popular,
-    }
-
-
 def save_campaign(prompt: str, output: str, city: str = "", country: str = "") -> str:
     """Append a campaign row with all extended fields. Returns campaign_id."""
     cid = str(uuid.uuid4())
-    baseline = _read_current_metrics()
+    baseline = get_current_metrics()
     now = datetime.now().isoformat()
 
     ensure_headers(SHEET_NAME, CAMPAIGN_HEADERS)
@@ -92,19 +57,74 @@ def save_campaign(prompt: str, output: str, city: str = "", country: str = "") -
         json.dumps(baseline),        # baseline_metrics_json
         "",                          # evaluated_at
         "",                          # evaluation_window_days
+        "",                          # approved_at
+        "",                          # is_active
     ])
     return cid
 
 
-def approve_campaign(campaign_id: str) -> bool:
-    """Set a campaign's status to 'Approved'. Returns True on success."""
+def approve_campaign(campaign_id: str) -> dict:
+    """Approve a campaign and set it as the single active campaign.
+
+    Deactivates any previously active campaign. Returns a warning if another
+    campaign was still within its evaluation window.
+
+    Returns dict with status and optional warning.
+    """
     records = get_all_records(SHEET_NAME)
+    now = datetime.now().isoformat()
+    warning = None
+    found = False
+
     for idx, row in enumerate(records, start=2):
-        if row.get("campaign_id", "") == campaign_id:
+        cid = row.get("campaign_id", "")
+
+        if cid == campaign_id:
             status_col = CAMPAIGN_HEADERS.index("status") + 1
             update_cell(SHEET_NAME, idx, status_col, "Approved")
-            return True
-    return False
+
+            current = get_current_metrics()
+            baseline_col = CAMPAIGN_HEADERS.index("baseline_metrics_json") + 1
+            update_cell(SHEET_NAME, idx, baseline_col, json.dumps(current))
+
+            approved_at_col = CAMPAIGN_HEADERS.index("approved_at") + 1
+            update_cell(SHEET_NAME, idx, approved_at_col, now)
+
+            window_col = CAMPAIGN_HEADERS.index("evaluation_window_days") + 1
+            update_cell(SHEET_NAME, idx, window_col, "7")
+
+            is_active_col = CAMPAIGN_HEADERS.index("is_active") + 1
+            update_cell(SHEET_NAME, idx, is_active_col, "Yes")
+
+            save_daily_metrics(active_campaign_id=campaign_id, force=False)
+            found = True
+
+        elif row.get("is_active", "") == "Yes" and cid != campaign_id:
+            is_active_col = CAMPAIGN_HEADERS.index("is_active") + 1
+            update_cell(SHEET_NAME, idx, is_active_col, "")
+
+            approved_raw = row.get("approved_at", "")
+            window_raw = row.get("evaluation_window_days", "7")
+            if approved_raw:
+                try:
+                    approved_dt = datetime.fromisoformat(str(approved_raw).replace("Z", ""))
+                    window = int(float(window_raw)) if window_raw else 7
+                    days_active = (datetime.now() - approved_dt).days
+                    if days_active < window:
+                        warning = (
+                            f"Another campaign ({cid}) was still active within its "
+                            f"{window}-day evaluation window ({days_active} day(s) elapsed)."
+                        )
+                except (ValueError, TypeError):
+                    pass
+
+    if not found:
+        return {"status": "error", "error": "Campaign not found"}
+
+    result = {"status": "ok"}
+    if warning:
+        result["warning"] = warning
+    return result
 
 
 def reject_campaign(campaign_id: str) -> bool:
@@ -121,6 +141,9 @@ def reject_campaign(campaign_id: str) -> bool:
 def evaluate_campaign(campaign_id: str, window_days: int = 7) -> dict:
     """Evaluate an Approved campaign by comparing baseline to current metrics.
 
+    Baseline is read from the Business Metrics sheet (snapshot taken at approval time).
+    Falls back to baseline_metrics_json column if no Business Metrics row is found.
+
     Args:
         campaign_id: The campaign to evaluate.
         window_days: Days since approval to consider meaningful (default 7).
@@ -135,33 +158,31 @@ def evaluate_campaign(campaign_id: str, window_days: int = 7) -> dict:
             if status != "Approved":
                 return {"status": "error", "error": "Only Approved campaigns can be evaluated."}
 
-            baseline_raw = row.get("baseline_metrics_json", "")
-            if not baseline_raw:
+            baseline = _read_baseline_from_metrics_sheet(campaign_id, row)
+            if baseline is None:
                 return {"status": "error", "error": "No baseline snapshot found."}
 
-            try:
-                baseline = json.loads(baseline_raw)
-            except (json.JSONDecodeError, TypeError):
-                return {"status": "error", "error": "Invalid baseline snapshot."}
-
-            created_at_str = row.get("created_at", "")
-            if created_at_str:
+            approved_at_str = row.get("approved_at", "")
+            if approved_at_str:
                 try:
-                    created = datetime.fromisoformat(str(created_at_str).replace("Z", ""))
-                    days_since = (datetime.now() - created).days
+                    approved = datetime.fromisoformat(str(approved_at_str).replace("Z", ""))
+                    days_since = (datetime.now() - approved).days
                 except (ValueError, TypeError):
                     days_since = None
             else:
                 days_since = None
 
-            if days_since is not None and days_since < window_days:
+            row_window = row.get("evaluation_window_days", "")
+            min_window = int(float(row_window)) if row_window else window_days
+
+            if days_since is not None and days_since < min_window:
                 return {
                     "status": "error",
-                    "error": f"Campaign is only {days_since} day(s) old. Minimum evaluation window is {window_days} days.",
+                    "error": f"Campaign is only {days_since} day(s) old. Minimum evaluation window is {min_window} days.",
                     "days_since": days_since,
                 }
 
-            current = _read_current_metrics()
+            current = get_current_metrics()
 
             occ_diff = round(current["occupancy"] - baseline["occupancy"], 1)
             bk_diff = current["bookings"] - baseline["bookings"]
@@ -173,11 +194,9 @@ def evaluate_campaign(campaign_id: str, window_days: int = 7) -> dict:
 
             result_score_col = CAMPAIGN_HEADERS.index("result_score") + 1
             evaluated_at_col = CAMPAIGN_HEADERS.index("evaluated_at") + 1
-            window_col = CAMPAIGN_HEADERS.index("evaluation_window_days") + 1
 
             update_cell(SHEET_NAME, idx, result_score_col, str(score))
             update_cell(SHEET_NAME, idx, evaluated_at_col, now)
-            update_cell(SHEET_NAME, idx, window_col, str(window_days))
 
             return {
                 "status": "ok",
@@ -194,6 +213,35 @@ def evaluate_campaign(campaign_id: str, window_days: int = 7) -> dict:
             }
 
     return {"status": "error", "error": "Campaign not found."}
+
+
+def _read_baseline_from_metrics_sheet(campaign_id: str, campaign_row: dict) -> dict | None:
+    """Read baseline metrics from the Business Metrics sheet for a campaign.
+
+    Falls back to baseline_metrics_json in the campaign row if no sheet entry exists.
+
+    Returns a dict with keys (occupancy, bookings, bookings_30d) or None.
+    """
+    try:
+        metrics_records = get_all_records("Business Metrics")
+        for m in metrics_records:
+            if m.get("active_campaign_id", "") == campaign_id:
+                return {
+                    "occupancy": float(m.get("occupancy_rate", 0)),
+                    "bookings": int(float(m.get("total_bookings", 0))),
+                    "bookings_30d": int(float(m.get("bookings_30d", 0))),
+                }
+    except Exception:
+        pass
+
+    baseline_raw = campaign_row.get("baseline_metrics_json", "")
+    if not baseline_raw:
+        return None
+
+    try:
+        return json.loads(baseline_raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
 
 
 def _compute_score(baseline: dict, current: dict) -> int:

@@ -1,4 +1,4 @@
-"""Tool to search the web for competitor car rental ads and offers."""
+"""Tool to search the web for relevant car rental ads and offers."""
 
 from langchain_core.tools import tool
 
@@ -17,12 +17,12 @@ def _normalize_error(source: str, e: Exception) -> str:
 
 
 @tool
-def search_competitor_ads(
+def search_relevant_ads(
     query: str = "",
     city: str = "",
     country: str = "",
 ) -> str:
-    """Search the web for competitor rental car ads, offers, and promotions.
+    """Search the web for relevant rental car ads, offers, and promotions.
 
     Args:
         query: Search focus (e.g. "SUV discounts", "weekend deals").
@@ -35,9 +35,9 @@ def search_competitor_ads(
         try:
             tavily = TavilySearchResults(max_results=6)
         except Exception as e:
-            return _normalize_error("competitor_search", e)
+            return _normalize_error("relevant_search", e)
 
-        parts = [query or "car rental competitor ads offers discounts promotions"]
+        parts = [query or "car rental relevant ads offers discounts promotions"]
         if city:
             parts.append(city)
         if country:
@@ -46,12 +46,12 @@ def search_competitor_ads(
         results = tavily.invoke(search_query)
 
         if isinstance(results, str):
-            return _normalize_error("competitor_search", Exception(results))
+            return _normalize_error("relevant_search", Exception(results))
 
         if not results:
-            return "[TOOL STATUS] source=competitor_search status=EMPTY reason=NO_RESULTS message=No competitor data found via web search."
+            return "[TOOL STATUS] source=relevant_search status=EMPTY reason=NO_RESULTS message=No relevant data found via web search."
 
-        lines = ["Competitor Ads & Offers:"]
+        lines = ["relevant Ads & Offers:"]
         for r in results:
             title = r.get("title", "")
             content = r.get("content", "")
@@ -65,4 +65,4 @@ def search_competitor_ads(
         return "\n".join(lines)
 
     except Exception as e:
-        return _normalize_error("competitor_search", e)
+        return _normalize_error("relevant_search", e)

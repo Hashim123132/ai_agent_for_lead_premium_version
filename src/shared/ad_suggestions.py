@@ -1,4 +1,4 @@
-"""Search competitor ads with mode-based queries and analyze patterns."""
+"""Search relevant ads with mode-based queries and analyze patterns."""
 
 import asyncio
 import json
@@ -32,7 +32,7 @@ BRAND_DOMAINS = {
 
 QUERIES: dict[str, list[str]] = {
     "web": [
-        "{goal} car rental competitor offers promotions {city} {country}",
+        "{goal} car rental offers promotions {city} {country}",
         "car rental {goal} landing pages deals {city} {country}",
         "{goal} car rental ads promotions {city} {country}",
         "car rental promotional campaigns creatives {city} {country} {goal}",
@@ -40,7 +40,7 @@ QUERIES: dict[str, list[str]] = {
     "deep": [
         "{goal} car rental Facebook Instagram ads {city} {country}",
         "car rental search ads ad examples {city} {country}",
-        "competitor car rental offers promotions {city} {country} {goal}",
+        "car rental offers promotions {city} {country} {goal}",
         "car rental advertising trends insights {city} {country}",
     ],
     "pinterest": [
@@ -143,6 +143,26 @@ async def _run_tavily(
     return structured
 
 
+async def _search_text_ddg(query: str, max_results: int) -> list[dict[str, Any]]:
+    from duckduckgo_search import DDGS
+
+    try:
+        results = await asyncio.to_thread(
+            lambda: list(DDGS().text(keywords=query, max_results=max_results))
+        )
+        return [
+            {
+                "source_url": r.get("href", ""),
+                "title": r.get("title", ""),
+                "content": r.get("body", "")[:500],
+                "image_url": "",
+            }
+            for r in results
+        ]
+    except Exception:
+        return []
+
+
 async def _search_images_ddg(query: str, max_results: int) -> list[dict[str, Any]]:
     from duckduckgo_search import DDGS
 
@@ -192,33 +212,60 @@ def _score_relevance(ad: dict[str, Any], city: str, country: str) -> int:
     return score
 
 
-async def search_competitor_ads(
+async def search_relevant_ads(
     mode: str, city: str, country: str, goal: str
 ) -> list[dict[str, Any]]:
-    from tavily import TavilyClient
-
-    api_key = os.getenv("TAVILY_API_KEY")
-    if not api_key:
-        raise ValueError("TAVILY_API_KEY not set")
-
-    client = TavilyClient(api_key=api_key)
     templates = QUERIES.get(mode, QUERIES["web"])
     now = datetime.now(timezone.utc).isoformat()
 
-    max_per_query = 8 if mode == "web" else 6
+    max_per_query = 12 if mode == "pinterest" else 8 if mode == "web" else 6
 
     all_text: list[dict[str, Any]] = []
     all_images: list[dict[str, Any]] = []
+
+    api_key = os.getenv("TAVILY_API_KEY")
+    tavily_client = None
+    if api_key:
+        from tavily import TavilyClient
+        tavily_client = TavilyClient(api_key=api_key)
 
     for template in templates:
         query = _build_query(template, city, country, goal)
         if not query:
             continue
 
-        text_results, image_results = await asyncio.gather(
-            _run_tavily(client, query, max_per_query),
+        tasks = [
+            _search_text_ddg(query, max_per_query),
             _search_images_ddg(query, max_per_query),
-        )
+        ]
+        if tavily_client:
+            tasks.insert(
+                0,
+                asyncio.wait_for(
+                    _run_tavily(tavily_client, query, max_per_query),
+                    timeout=15,
+                ),
+            )
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        if tavily_client:
+            tavily_results, ddg_results, image_results = results
+            if isinstance(tavily_results, BaseException):
+                tavily_results = []
+            if isinstance(ddg_results, BaseException):
+                ddg_results = []
+            if isinstance(image_results, BaseException):
+                image_results = []
+            text_results = ddg_results if ddg_results else tavily_results
+        else:
+            ddg_results, image_results = results
+            if isinstance(ddg_results, BaseException):
+                ddg_results = []
+            if isinstance(image_results, BaseException):
+                image_results = []
+            text_results = ddg_results
+
         all_text.extend(text_results)
         all_images.extend(image_results)
 
@@ -270,7 +317,7 @@ async def search_competitor_ads(
                 "image_url": img_url,
                 "source_url": txt.get("source_url", ""),
                 "brand": brand,
-                "title": txt.get("title", f"Competitor Ad #{len(ads) + 1}"),
+                "title": txt.get("title", f"relevant Ad #{len(ads) + 1}"),
                 "content": txt.get("content", ""),
                 "captured_at": now,
             }
@@ -294,7 +341,7 @@ async def search_competitor_ads(
                 "image_url": img_url,
                 "source_url": img.get("source_url", ""),
                 "brand": brand,
-                "title": img.get("title", f"Competitor Ad #{len(ads) + 1}"),
+                "title": img.get("title", f"relevant Ad #{len(ads) + 1}"),
                 "content": img.get("content", ""),
                 "captured_at": now,
             }
@@ -350,21 +397,27 @@ async def analyze_ads(
     )
 
     mode_labels = {
-        "web": "competitor websites and landing pages",
-        "deep": "social media, search ads, competitor offers, and trends",
+        "web": "relevant websites and landing pages",
+        "deep": "social media, search ads, relevant offers, and trends",
         "pinterest": "Pinterest boards and pins",
     }
     channel_label = mode_labels.get(mode, "web")
 
+    location = ""
+    if city or country:
+        location = f" for {city}, {country}"
+        scoring_extra = "\n- Local relevance: are the ads specific to this city/country?"
+    else:
+        scoring_extra = ""
+
     prompt = (
-        f"You are a marketing analyst. Analyze competitor car rental ads for {city}, {country} sourced from {channel_label}.\n"
+        f"You are a marketing analyst. Analyze relevant car rental ads{location} sourced from {channel_label}.\n"
         f"Business goal: {goal}\n\n"
         f"Ads:\n{ads_text}\n\n"
         "Analyze patterns using these scoring lenses:\n"
         "- Freshness: how recent do the creative approaches appear?\n"
         "- Repeat appearance: do similar patterns appear across multiple sources?\n"
-        "- Creative similarity: do ads share visual or messaging styles?\n"
-        "- Local relevance: are the ads specific to this city/country?\n\n"
+        "- Creative similarity: do ads share visual or messaging styles?" + scoring_extra + "\n\n"
         "Return a JSON object with EXACTLY these keys (no markdown, no code fences):\n"
         '- observed_ad: what specific ad pattern or approach was observed? Use phrases like "observed repeatedly", "commonly promoted"\n'
         '- creative_pattern: what creative structure or format appears active?\n'

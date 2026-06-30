@@ -15,9 +15,10 @@ import requests
 
 from appointment_agent import appointment_agent_graph
 from marketing_agent import marketing_agent_graph
-from shared.ad_suggestions import analyze_ads, search_competitor_ads
+from shared.ad_suggestions import analyze_ads, search_relevant_ads
 from shared.campaign_service import approve_campaign, evaluate_campaign, list_campaigns, reject_campaign, save_campaign
 from shared.integrations.sheets_client import get_all_records
+from shared.metrics_service import get_metrics_range, save_daily_metrics
 
 load_dotenv()
 
@@ -45,7 +46,7 @@ conversations: dict[str, list] = defaultdict(list)
 
 PROGRESS_LABELS = {
     "get_booking_metrics": "Fetching booking data...",
-    "search_competitor_ads": "Analyzing competitor ads...",
+    "search_relevant_ads": "Analyzing relevant ads...",
     "search_market_trends": "Analyzing market trends...",
     "save_campaign_draft": "Finalizing campaign draft...",
 }
@@ -226,10 +227,8 @@ async def approve(request: Request):
     campaign_id = body.get("campaign_id", "")
     if not campaign_id:
         return {"status": "error", "error": "campaign_id is required"}
-    ok = approve_campaign(campaign_id)
-    if ok:
-        return {"status": "ok"}
-    return {"status": "error", "error": "Campaign not found"}
+    result = approve_campaign(campaign_id)
+    return result
 
 
 @app.post("/campaign/reject")
@@ -315,9 +314,33 @@ async def metrics():
         return {"status": "error", "error": str(e)}
 
 
+@app.post("/metrics/snapshot")
+async def metrics_snapshot(request: Request):
+    body = await request.json()
+    campaign_id = body.get("campaign_id", "")
+    try:
+        snapshot = save_daily_metrics(active_campaign_id=campaign_id, force=True)
+        return {"status": "ok", "snapshot": snapshot}
+    except Exception as e:
+        logger.error("Error saving metrics snapshot: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/metrics/history")
+async def metrics_history(request: Request):
+    start_date = request.query_params.get("start_date", "")
+    end_date = request.query_params.get("end_date", "")
+    try:
+        records = get_metrics_range(start_date, end_date)
+        return {"status": "ok", "metrics": records}
+    except Exception as e:
+        logger.error("Error fetching metrics history: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
 @app.post("/ad-suggestions/search")
 async def ad_suggestions_search(request: Request):
-    """Search competitor ad images + AI pattern analysis via SSE."""
+    """Search relevant ad images + AI pattern analysis via SSE."""
     body = await request.json()
     country = body.get("country", "")
     city = body.get("city", "")
@@ -334,7 +357,7 @@ async def ad_suggestions_search(request: Request):
 
     async def event_stream():
         try:
-            ads = await search_competitor_ads(mode, city, country, goal)
+            ads = await search_relevant_ads(mode, city, country, goal)
             yield f"data: {json.dumps({'type': 'ads', 'ads': ads})}\n\n"
 
             analysis = await analyze_ads(ads, mode, city, country, goal)

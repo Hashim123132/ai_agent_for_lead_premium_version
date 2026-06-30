@@ -38,7 +38,7 @@ type CampaignCard = {
 
 const PROGRESS_STEPS = [
   "Fetching booking data...",
-  "Analyzing competitor ads...",
+  "Analyzing relevant ads...",
   "Analyzing market trends...",
   "Extracting and validating evidence...",
   "Generating campaign strategy...",
@@ -221,7 +221,7 @@ export default function CampaignsPage() {
         </CardContent>
         <CardFooter className="justify-between">
           <p className="text-xs text-muted-foreground">
-            The agent will analyze booking data, competitor ads, and market
+            The agent will analyze booking data, relevant ads, and market
             trends{country || city ? ` for ${[city, country].filter(Boolean).join(", ")}` : ""}.
           </p>
           <Button

@@ -48,7 +48,7 @@ OUTPUT RULES — strictly enforced:
 - Max 3 sources — clean titles with URLs only, taken from tool results
 - Sources must use the page title from the tool output, never raw URLs alone
 - If a tool returned UNAVAILABLE or EMPTY, mention limitation in Key Signals
-  (e.g. "⚠ Competitor data unavailable due to API limit") and lower confidence.
+  (e.g. "⚠ relevant data unavailable due to API limit") and lower confidence.
   Do not add "Source unavailable" to the Sources list.
 - If all sources unavailable → hard stop message only, no report
 
@@ -69,6 +69,6 @@ Market location: {market_city}, {market_country}
 - Never assume a location. If no market location is provided, check booking data
   for customer locations or ask the user.
 - Long-term location priority: Business settings > Booking data > User input.
-- Always pass the city and country to search_competitor_ads and search_market_trends
+- Always pass the city and country to search_relevant_ads and search_market_trends
   when a location is known.
 """

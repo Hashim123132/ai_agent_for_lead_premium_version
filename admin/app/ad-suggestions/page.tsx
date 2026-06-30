@@ -29,7 +29,7 @@ import type { AdSuggestion, AdAnalysis, SearchMode } from "@/lib/api";
 import { searchAdSuggestions } from "@/lib/api";
 
 const LOADING_MESSAGES: Record<SearchMode, string> = {
-  web: "Scanning competitor websites & promotions...",
+  web: "Scanning relevant websites & promotions...",
   deep: "Searching social, search ads, offers & trends...",
   pinterest: "Searching Pinterest for ad inspiration...",
 };
@@ -101,7 +101,7 @@ export default function AdSuggestionsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Ad Suggestions</h1>
         <p className="mt-1 text-muted-foreground">
-          Search competitor car rental ads for inspiration, then get AI-powered
+          Search relevant car rental ads for inspiration, then get AI-powered
           pattern analysis.
         </p>
       </div>
@@ -135,10 +135,11 @@ export default function AdSuggestionsPage() {
               </Select>
 
               <button
-                onClick={() => setMode("deep")}
-                className={`flex items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
+                onClick={() => setMode(mode === "deep" ? "web" : "deep")}
+                disabled={loading}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 ${
                   mode === "deep"
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "border-primary bg-primary text-primary-foreground hover:bg-primary/80"
                     : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
@@ -148,7 +149,7 @@ export default function AdSuggestionsPage() {
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground">
               {mode === "web"
-                ? "Competitor sites, landing pages, promotions"
+                ? "relevant sites, landing pages, promotions"
                 : mode === "pinterest"
                   ? "Strictly Pinterest boards & pins for ad inspiration"
                   : "Social + search + offers + trends (slower)"}
@@ -185,7 +186,7 @@ export default function AdSuggestionsPage() {
           </div>
           <Button
             onClick={handleSearch}
-            disabled={loading || (!country.trim() && !city.trim())}
+            disabled={loading}
             className="mt-4"
           >
             {loading ? (
@@ -196,7 +197,7 @@ export default function AdSuggestionsPage() {
             ) : (
               <>
                 <Search className="mr-2 size-4" />
-                Search Competitor Ads
+                Search relevant Ads
               </>
             )}
           </Button>
@@ -225,7 +226,7 @@ export default function AdSuggestionsPage() {
         <div ref={galleryRef}>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              Competitor Ads
+              relevant Ads
               <span className="ml-2 text-sm font-normal text-muted-foreground">
                 ({ads.length} found)
               </span>
@@ -276,7 +277,7 @@ export default function AdSuggestionsPage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12">
             <ImageIcon className="size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No competitor ads found. Try different search terms or mode.</p>
+            <p className="text-sm text-muted-foreground">No relevant ads found. Try different search terms or mode.</p>
           </CardContent>
         </Card>
       )}
@@ -285,7 +286,7 @@ export default function AdSuggestionsPage() {
         <Card>
           <CardContent className="flex items-center gap-3 py-6">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Analyzing competitor patterns...</p>
+            <p className="text-sm text-muted-foreground">Analyzing relevant patterns...</p>
           </CardContent>
         </Card>
       )}
@@ -315,7 +316,7 @@ export default function AdSuggestionsPage() {
 
       {selectedAd && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 p-4"
           onClick={() => setSelectedAd(null)}
         >
           <div
