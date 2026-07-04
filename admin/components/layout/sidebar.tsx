@@ -18,6 +18,7 @@ import {
   Newspaper,
   Lightbulb,
   DollarSign,
+  Users,
   Sun,
   Moon,
   ChevronDown,
@@ -37,6 +38,10 @@ const campaignItems: NavItem[] = [
 
 const pricingItems: NavItem[] = [
   { href: "/pricing", label: "Pricing", icon: DollarSign },
+]
+
+const leadsItems: NavItem[] = [
+  { href: "/leads", label: "Leads", icon: Users },
 ]
 
 const bottomItems: NavItem[] = [
@@ -129,6 +134,10 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
             <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
           ))}
         </div>
+
+        {leadsItems.map((item) => (
+          <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
+        ))}
 
         {bottomItems.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />

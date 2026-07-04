@@ -14,6 +14,8 @@ from fastapi.responses import StreamingResponse
 import requests
 
 from appointment_agent import appointment_agent_graph
+from appointment_agent.followup import FollowupManager
+from lead_gen_agent import lead_gen_agent_graph
 from marketing_agent import marketing_agent_graph
 from pricing_agent import pricing_agent_graph
 from shared.ad_suggestions import analyze_ads, search_relevant_ads
@@ -44,6 +46,11 @@ VERIFY_TOKEN = os.getenv("FB_VERIFY_TOKEN", "hashim_webhook_123")
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 API_VERSION = "v18.0"
 
+followup_manager = FollowupManager(
+    page_access_token=PAGE_ACCESS_TOKEN,
+    api_version=API_VERSION,
+) if PAGE_ACCESS_TOKEN else None
+
 conversations: dict[str, list] = defaultdict(list)
 
 PROGRESS_LABELS = {
@@ -52,6 +59,8 @@ PROGRESS_LABELS = {
     "search_relevant_ads": "Analyzing relevant ads...",
     "search_market_trends": "Analyzing market trends...",
     "get_car_inventory": "Analyzing inventory & pricing...",
+    "search_business_leads": "Searching for leads...",
+    "save_lead": "Saving lead to CRM...",
     "save_campaign_draft": "Finalizing campaign draft...",
 }
 
@@ -106,6 +115,9 @@ async def _handle_message(sender_id: str, text: str):
         new_messages = result.get("messages", [])
         conversations[sender_id] = list(new_messages)
         logger.info("[%s] History updated (%s messages)", sender_id, len(new_messages))
+
+        if followup_manager:
+            followup_manager.track(sender_id, new_messages)
 
         response_text = None
         for msg in reversed(new_messages):
@@ -298,6 +310,75 @@ async def run_pricing(request: Request):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@app.post("/leads/generate")
+async def run_lead_gen(request: Request):
+    """Stream lead generation agent execution with real-time progress via SSE."""
+    body = await request.json()
+    market = body.get("market", {})
+    city = market.get("city", "")
+    country = market.get("country", "")
+    query = body.get("query", "")
+
+    logger.info("Lead gen agent invoked | market: %s, %s | query: %s", city, country, query[:100])
+
+    async def event_stream():
+        user_msg = f"Find business partners in {city}, {country}." if not query else query
+        state = {
+            "messages": [("user", user_msg)],
+            "market": {"city": city, "country": country},
+        }
+
+        try:
+            final_messages = None
+
+            async for event in lead_gen_agent_graph.astream_events(state, version="v2"):
+                kind = event["event"]
+                name = event.get("name", "")
+
+                if kind == "on_tool_start" and name in PROGRESS_LABELS:
+                    msg = json.dumps({"type": "progress", "message": PROGRESS_LABELS[name]})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chat_model_start":
+                    msg = json.dumps({"type": "progress", "message": "Generating lead strategy..."})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chain_end":
+                    output = event["data"].get("output", {})
+                    if isinstance(output, dict) and "messages" in output:
+                        final_messages = output["messages"]
+
+            if not final_messages:
+                msg = json.dumps({"type": "error", "error": "No messages returned from graph."})
+                yield f"data: {msg}\n\n"
+                return
+
+            response_text = None
+            for m in reversed(final_messages):
+                if hasattr(m, "content") and m.content and not getattr(m, "tool_calls", None):
+                    response_text = m.content
+                    break
+
+            if not response_text:
+                msg = json.dumps({"type": "error", "error": "No text response generated."})
+                yield f"data: {msg}\n\n"
+                return
+
+            result = json.dumps({
+                "type": "result",
+                "status": "ok",
+                "response": response_text,
+            })
+            yield f"data: {result}\n\n"
+
+        except Exception as e:
+            logger.error("Lead gen agent error: %s", e, exc_info=True)
+            err = json.dumps({"type": "error", "error": str(e)})
+            yield f"data: {err}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/campaign/approve")
 async def approve(request: Request):
     body = await request.json()
@@ -484,3 +565,9 @@ async def ad_suggestions_search(request: Request):
 @app.get("/health")
 async def health():
     return {"status": "ok", "agent": appointment_agent_graph.name}
+
+
+@app.on_event("startup")
+async def start_followup_loop():
+    if followup_manager:
+        asyncio.create_task(followup_manager.run())
