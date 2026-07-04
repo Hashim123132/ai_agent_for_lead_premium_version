@@ -15,8 +15,10 @@ import requests
 
 from appointment_agent import appointment_agent_graph
 from marketing_agent import marketing_agent_graph
+from pricing_agent import pricing_agent_graph
 from shared.ad_suggestions import analyze_ads, search_relevant_ads
-from shared.campaign_service import approve_campaign, evaluate_campaign, list_campaigns, reject_campaign, save_campaign
+from shared.business_profile import format_profile_for_prompt, get_profile, update_profile
+from shared.campaign_service import approve_campaign, evaluate_campaign, get_active_campaign, list_campaigns, reject_campaign, save_campaign
 from shared.integrations.sheets_client import get_all_records
 from shared.metrics_service import get_metrics_range, save_daily_metrics
 
@@ -46,8 +48,10 @@ conversations: dict[str, list] = defaultdict(list)
 
 PROGRESS_LABELS = {
     "get_booking_metrics": "Fetching booking data...",
+    "analyze_past_campaigns": "Learning from past campaigns...",
     "search_relevant_ads": "Analyzing relevant ads...",
     "search_market_trends": "Analyzing market trends...",
+    "get_car_inventory": "Analyzing inventory & pricing...",
     "save_campaign_draft": "Finalizing campaign draft...",
 }
 
@@ -160,12 +164,16 @@ async def run_marketing(request: Request):
     city = market.get("city", "")
     country = market.get("country", "")
 
+    profile = get_profile()
+    profile_context = format_profile_for_prompt(profile)
+    enriched_prompt = f"{profile_context}\n\nCAMPAIGN REQUEST:\n{prompt}" if profile_context else prompt
+
     logger.info("Marketing agent invoked with prompt: %s | market: %s, %s", prompt[:100], city, country)
 
     async def event_stream():
         state = {
-            "messages": [("user", prompt)],
-            "market": {"city": city, "country": country},
+            "messages": [("user", enriched_prompt)],
+            "market": {"city": city or profile.get("city", ""), "country": country or profile.get("country", "")},
         }
 
         try:
@@ -221,6 +229,75 @@ async def run_marketing(request: Request):
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@app.post("/pricing/generate")
+async def run_pricing(request: Request):
+    """Stream pricing agent execution with real-time progress via SSE."""
+    body = await request.json()
+    market = body.get("market", {})
+    city = market.get("city", "")
+    country = market.get("country", "")
+
+    logger.info("Pricing agent invoked | market: %s, %s", city, country)
+
+    async def event_stream():
+        state = {
+            "messages": [
+                ("user", f"Analyze current pricing for {city}, {country}. Generate pricing recommendations.")
+            ],
+            "market": {"city": city, "country": country},
+        }
+
+        try:
+            final_messages = None
+
+            async for event in pricing_agent_graph.astream_events(state, version="v2"):
+                kind = event["event"]
+                name = event.get("name", "")
+
+                if kind == "on_tool_start" and name in PROGRESS_LABELS:
+                    msg = json.dumps({"type": "progress", "message": PROGRESS_LABELS[name]})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chat_model_start":
+                    msg = json.dumps({"type": "progress", "message": "Generating pricing strategy..."})
+                    yield f"data: {msg}\n\n"
+
+                if kind == "on_chain_end":
+                    output = event["data"].get("output", {})
+                    if isinstance(output, dict) and "messages" in output:
+                        final_messages = output["messages"]
+
+            if not final_messages:
+                msg = json.dumps({"type": "error", "error": "No messages returned from graph."})
+                yield f"data: {msg}\n\n"
+                return
+
+            response_text = None
+            for m in reversed(final_messages):
+                if hasattr(m, "content") and m.content and not getattr(m, "tool_calls", None):
+                    response_text = m.content
+                    break
+
+            if not response_text:
+                msg = json.dumps({"type": "error", "error": "No text response generated."})
+                yield f"data: {msg}\n\n"
+                return
+
+            result = json.dumps({
+                "type": "result",
+                "status": "ok",
+                "response": response_text,
+            })
+            yield f"data: {result}\n\n"
+
+        except Exception as e:
+            logger.error("Pricing agent error: %s", e, exc_info=True)
+            err = json.dumps({"type": "error", "error": str(e)})
+            yield f"data: {err}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/campaign/approve")
 async def approve(request: Request):
     body = await request.json()
@@ -252,6 +329,18 @@ async def evaluate(request: Request):
     window_days = body.get("window_days", 7)
     result = evaluate_campaign(campaign_id, window_days=window_days)
     return result
+
+
+@app.get("/campaign/active")
+async def active_campaign():
+    try:
+        active = get_active_campaign()
+        if active:
+            return {"status": "ok", "campaign": active}
+        return {"status": "ok", "campaign": None}
+    except Exception as e:
+        logger.error("Error fetching active campaign: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/campaigns")
@@ -338,13 +427,35 @@ async def metrics_history(request: Request):
         return {"status": "error", "error": str(e)}
 
 
+@app.get("/business-profile")
+async def business_profile_get():
+    try:
+        profile = get_profile()
+        return {"status": "ok", "profile": profile}
+    except Exception as e:
+        logger.error("Error reading business profile: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.put("/business-profile")
+async def business_profile_put(request: Request):
+    try:
+        body = await request.json()
+        profile = update_profile(body)
+        return {"status": "ok", "profile": profile}
+    except Exception as e:
+        logger.error("Error updating business profile: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
 @app.post("/ad-suggestions/search")
 async def ad_suggestions_search(request: Request):
     """Search relevant ad images + AI pattern analysis via SSE."""
     body = await request.json()
-    country = body.get("country", "")
-    city = body.get("city", "")
-    goal = body.get("goal", "")
+    profile = get_profile()
+    country = body.get("country", "") or profile.get("country", "")
+    city = body.get("city", "") or profile.get("city", "")
+    goal = body.get("goal", "") or profile.get("business_goals", "")
     mode = body.get("mode", "web")
 
     logger.info(
@@ -360,7 +471,7 @@ async def ad_suggestions_search(request: Request):
             ads = await search_relevant_ads(mode, city, country, goal)
             yield f"data: {json.dumps({'type': 'ads', 'ads': ads})}\n\n"
 
-            analysis = await analyze_ads(ads, mode, city, country, goal)
+            analysis = await analyze_ads(ads, mode, city, country, goal, profile=profile)
             yield f"data: {json.dumps({'type': 'analysis', 'analysis': analysis})}\n\n"
 
         except Exception as e:

@@ -4,7 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { approveCampaign, evaluateCampaign, fetchCampaigns, rejectCampaign } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { approveCampaign, evaluateCampaign, fetchCampaigns, fetchActiveCampaign, rejectCampaign } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -82,6 +92,9 @@ export default function CampaignHistoryPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [evaluateLoading, setEvaluateLoading] = useState<string | null>(null);
   const [evaluateError, setEvaluateError] = useState<string | null>(null);
+  const [pendingApprove, setPendingApprove] = useState<string | null>(null);
+  const [activeCampaignName, setActiveCampaignName] = useState<string | null>(null);
+  const [approveWarning, setApproveWarning] = useState<string | null>(null);
   const [filterCountry, setFilterCountry] = useState("");
   const [filterCity, setFilterCity] = useState("");
 
@@ -102,7 +115,23 @@ export default function CampaignHistoryPage() {
     }
   }
 
-  async function handleApprove(campaignId: string) {
+  async function handleApproveClick(campaignId: string) {
+    setApproveWarning(null);
+    try {
+      const data = await fetchActiveCampaign();
+      if (data.campaign) {
+        const name = data.campaign.campaign_name || data.campaign.campaign_id;
+        setActiveCampaignName(name);
+        setPendingApprove(campaignId);
+      } else {
+        await doApprove(campaignId);
+      }
+    } catch {
+      await doApprove(campaignId);
+    }
+  }
+
+  async function doApprove(campaignId: string) {
     setActionLoading(campaignId);
     setCampaigns((prev) =>
       prev.map((c) =>
@@ -110,7 +139,10 @@ export default function CampaignHistoryPage() {
       ),
     );
     try {
-      await approveCampaign(campaignId);
+      const result = await approveCampaign(campaignId);
+      if (result.warning) {
+        setApproveWarning(result.warning);
+      }
     } catch {
       setCampaigns((prev) =>
         prev.map((c) =>
@@ -204,7 +236,40 @@ export default function CampaignHistoryPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
+    <>
+      <AlertDialog
+        open={pendingApprove !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingApprove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Active Campaign Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Another campaign is currently active. Approving this one will
+              deactivate the previous campaign (<span className="font-medium text-foreground">{activeCampaignName}</span>).
+              Only one campaign can be active at a time.
+              <br /><br />
+              Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = pendingApprove;
+                setPendingApprove(null);
+                if (id) doApprove(id);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Campaign History</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -436,7 +501,7 @@ export default function CampaignHistoryPage() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleApprove(c.campaign_id);
+                            handleApproveClick(c.campaign_id);
                           }}
                           disabled={actionLoading === c.campaign_id}
                         >
@@ -450,6 +515,10 @@ export default function CampaignHistoryPage() {
                       )}
                     </div>
 
+                    {approveWarning && (
+                      <p className="text-xs text-amber-600">{approveWarning}</p>
+                    )}
+
                     {evaluateError && (
                       <p className="text-xs text-destructive">{evaluateError}</p>
                     )}
@@ -461,5 +530,6 @@ export default function CampaignHistoryPage() {
         </div>
       )}
     </div>
+    </>
   );
 }

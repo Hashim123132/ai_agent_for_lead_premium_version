@@ -7,6 +7,12 @@ from datetime import datetime, timedelta
 from shared.integrations.sheets_client import append_row, ensure_headers, get_all_records, update_cell
 from shared.metrics_service import get_current_metrics, save_daily_metrics
 
+try:
+    from marketing_agent.tools.past_campaigns import clear_past_campaigns_cache
+except ImportError:
+    def clear_past_campaigns_cache() -> None:
+        pass
+
 CAMPAIGN_HEADERS = [
     "campaign_name",
     "audience",
@@ -97,6 +103,7 @@ def approve_campaign(campaign_id: str) -> dict:
             update_cell(SHEET_NAME, idx, is_active_col, "Yes")
 
             save_daily_metrics(active_campaign_id=campaign_id, force=False)
+            clear_past_campaigns_cache()
             found = True
 
         elif row.get("is_active", "") == "Yes" and cid != campaign_id:
@@ -264,3 +271,12 @@ def list_campaigns() -> list[dict]:
     """Return all campaigns that have a campaign_id (server-saved rows)."""
     records = get_all_records(SHEET_NAME)
     return [r for r in records if r.get("campaign_id", "")]
+
+
+def get_active_campaign() -> dict | None:
+    """Return the currently active campaign, or None if none is active."""
+    records = get_all_records(SHEET_NAME)
+    for row in records:
+        if row.get("is_active", "") == "Yes":
+            return row
+    return None

@@ -369,7 +369,8 @@ async def search_relevant_ads(
 
 
 async def analyze_ads(
-    ads: list[dict[str, Any]], mode: str, city: str, country: str, goal: str
+    ads: list[dict[str, Any]], mode: str, city: str, country: str, goal: str,
+    profile: dict[str, str] | None = None,
 ) -> dict[str, str]:
     from langchain_mistralai import ChatMistralAI
 
@@ -403,6 +404,20 @@ async def analyze_ads(
     }
     channel_label = mode_labels.get(mode, "web")
 
+    brand_context = ""
+    if profile:
+        parts = []
+        if profile.get("business_name"):
+            parts.append(f"you are analyzing for {profile['business_name']}")
+        if profile.get("brand_tone"):
+            parts.append(f"brand tone: {profile['brand_tone']}")
+        if profile.get("target_market"):
+            parts.append(f"target market: {profile['target_market']}")
+        if profile.get("fleet_types"):
+            parts.append(f"fleet: {profile['fleet_types']}")
+        if parts:
+            brand_context = " (" + "; ".join(parts) + ")"
+
     location = ""
     if city or country:
         location = f" for {city}, {country}"
@@ -411,7 +426,7 @@ async def analyze_ads(
         scoring_extra = ""
 
     prompt = (
-        f"You are a marketing analyst. Analyze relevant car rental ads{location} sourced from {channel_label}.\n"
+        f"You are a marketing analyst. Analyze relevant car rental ads{location} sourced from {channel_label}{brand_context}.\n"
         f"Business goal: {goal}\n\n"
         f"Ads:\n{ads_text}\n\n"
         "Analyze patterns using these scoring lenses:\n"

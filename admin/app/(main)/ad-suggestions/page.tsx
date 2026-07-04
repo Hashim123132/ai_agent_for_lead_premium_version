@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -26,7 +24,69 @@ import {
   ImageOff,
 } from "lucide-react";
 import type { AdSuggestion, AdAnalysis, SearchMode } from "@/lib/api";
-import { searchAdSuggestions } from "@/lib/api";
+import { fetchBusinessProfile, searchAdSuggestions } from "@/lib/api";
+import { Combobox } from "@/components/ui/combobox";
+
+const COUNTRIES = [
+  { label: "United Arab Emirates", value: "UAE" },
+  { label: "United States", value: "USA" },
+  { label: "United Kingdom", value: "UK" },
+  { label: "Canada", value: "Canada" },
+  { label: "Australia", value: "Australia" },
+  { label: "Germany", value: "Germany" },
+  { label: "France", value: "France" },
+  { label: "Italy", value: "Italy" },
+  { label: "Spain", value: "Spain" },
+  { label: "Saudi Arabia", value: "Saudi Arabia" },
+  { label: "Qatar", value: "Qatar" },
+  { label: "Kuwait", value: "Kuwait" },
+  { label: "Oman", value: "Oman" },
+  { label: "Bahrain", value: "Bahrain" },
+  { label: "Egypt", value: "Egypt" },
+  { label: "Turkey", value: "Turkey" },
+  { label: "Singapore", value: "Singapore" },
+  { label: "Malaysia", value: "Malaysia" },
+  { label: "Thailand", value: "Thailand" },
+  { label: "India", value: "India" },
+];
+
+const CITIES = [
+  { label: "Dubai", value: "Dubai" },
+  { label: "Abu Dhabi", value: "Abu Dhabi" },
+  { label: "Houston", value: "Houston" },
+  { label: "New York", value: "New York" },
+  { label: "Los Angeles", value: "Los Angeles" },
+  { label: "Miami", value: "Miami" },
+  { label: "Chicago", value: "Chicago" },
+  { label: "London", value: "London" },
+  { label: "Paris", value: "Paris" },
+  { label: "Berlin", value: "Berlin" },
+  { label: "Riyadh", value: "Riyadh" },
+  { label: "Doha", value: "Doha" },
+  { label: "Kuwait City", value: "Kuwait City" },
+  { label: "Muscat", value: "Muscat" },
+  { label: "Manama", value: "Manama" },
+  { label: "Cairo", value: "Cairo" },
+  { label: "Istanbul", value: "Istanbul" },
+  { label: "Singapore", value: "Singapore" },
+  { label: "Kuala Lumpur", value: "Kuala Lumpur" },
+  { label: "Bangkok", value: "Bangkok" },
+  { label: "Mumbai", value: "Mumbai" },
+  { label: "Toronto", value: "Toronto" },
+];
+
+const GOAL_OPTIONS = [
+  { label: "Promote Luxury SUVs", value: "promote luxury SUVs" },
+  { label: "Increase Total Bookings", value: "increase bookings by 20%" },
+  { label: "Improve Occupancy Rate", value: "improve occupancy rate" },
+  { label: "Promote Economy Cars", value: "promote economy cars" },
+  { label: "Seasonal Campaign", value: "seasonal holiday campaign" },
+  { label: "Weekend Deals", value: "weekend rental deals" },
+  { label: "Long-Term Rentals", value: "monthly rental promotions" },
+  { label: "Business Travelers", value: "target business travelers" },
+  { label: "Tourist Packages", value: "tourist rental packages" },
+  { label: "Fleet Expansion", value: "new fleet promotion" },
+];
 
 const LOADING_MESSAGES: Record<SearchMode, string> = {
   web: "Scanning relevant websites & promotions...",
@@ -96,6 +156,16 @@ export default function AdSuggestionsPage() {
     return () => { document.body.style.overflow = ""; };
   }, [selectedAd]);
 
+  useEffect(() => {
+    fetchBusinessProfile().then((res) => {
+      if (res.profile) {
+        if (!city && res.profile.city) setCity(res.profile.city);
+        if (!country && res.profile.country) setCountry(res.profile.country);
+        if (!goal && res.profile.business_goals) setGoal(res.profile.business_goals);
+      }
+    }).catch(() => {});
+  }, []);
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
       <div>
@@ -159,28 +229,32 @@ export default function AdSuggestionsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium">Country</label>
-              <Input
-                placeholder="e.g. UAE, USA"
+              <Combobox
                 value={country}
-                onChange={(e) => setCountry(e.target.value)}
+                onChange={setCountry}
+                options={COUNTRIES}
+                placeholder="Select or type country..."
+                searchPlaceholder="Search country..."
               />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium">City</label>
-              <Input
-                placeholder="e.g. Dubai, Houston"
+              <Combobox
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={setCity}
+                options={CITIES}
+                placeholder="Select or type city..."
+                searchPlaceholder="Search city..."
               />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium">Goal</label>
-              <Textarea
-                placeholder="e.g. promote luxury SUVs"
+              <Combobox
                 value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                className="min-h-[40px]"
-                rows={1}
+                onChange={setGoal}
+                options={GOAL_OPTIONS}
+                placeholder="Select or type goal..."
+                searchPlaceholder="Search goal..."
               />
             </div>
           </div>

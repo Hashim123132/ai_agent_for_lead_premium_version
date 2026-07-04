@@ -24,6 +24,9 @@ Why this campaign:
 {{• bullet}}
 {{• bullet}}
 
+Past Campaign Learning:
+{{Which past high-scoring patterns this strategy builds on and why it fits}}
+
 Expected Outcome ({{External / Internal / Qualitative}}):
 {{outcome line}}
 

@@ -13,10 +13,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import {
   generateCampaignStream,
   approveCampaign,
   rejectCampaign,
+  fetchActiveCampaign,
+  fetchBusinessProfile,
 } from "@/lib/api";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Loader2,
   Sparkles,
@@ -25,8 +38,55 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  MapPin,
 } from "lucide-react";
+
+const COUNTRIES = [
+  { label: "United Arab Emirates", value: "UAE" },
+  { label: "United States", value: "USA" },
+  { label: "United Kingdom", value: "UK" },
+  { label: "Canada", value: "Canada" },
+  { label: "Australia", value: "Australia" },
+  { label: "Germany", value: "Germany" },
+  { label: "France", value: "France" },
+  { label: "Italy", value: "Italy" },
+  { label: "Spain", value: "Spain" },
+  { label: "Saudi Arabia", value: "Saudi Arabia" },
+  { label: "Qatar", value: "Qatar" },
+  { label: "Kuwait", value: "Kuwait" },
+  { label: "Oman", value: "Oman" },
+  { label: "Bahrain", value: "Bahrain" },
+  { label: "Egypt", value: "Egypt" },
+  { label: "Turkey", value: "Turkey" },
+  { label: "Singapore", value: "Singapore" },
+  { label: "Malaysia", value: "Malaysia" },
+  { label: "Thailand", value: "Thailand" },
+  { label: "India", value: "India" },
+];
+
+const CITIES = [
+  { label: "Dubai", value: "Dubai" },
+  { label: "Abu Dhabi", value: "Abu Dhabi" },
+  { label: "Houston", value: "Houston" },
+  { label: "New York", value: "New York" },
+  { label: "Los Angeles", value: "Los Angeles" },
+  { label: "Miami", value: "Miami" },
+  { label: "Chicago", value: "Chicago" },
+  { label: "London", value: "London" },
+  { label: "Paris", value: "Paris" },
+  { label: "Berlin", value: "Berlin" },
+  { label: "Riyadh", value: "Riyadh" },
+  { label: "Doha", value: "Doha" },
+  { label: "Kuwait City", value: "Kuwait City" },
+  { label: "Muscat", value: "Muscat" },
+  { label: "Manama", value: "Manama" },
+  { label: "Cairo", value: "Cairo" },
+  { label: "Istanbul", value: "Istanbul" },
+  { label: "Singapore", value: "Singapore" },
+  { label: "Kuala Lumpur", value: "Kuala Lumpur" },
+  { label: "Bangkok", value: "Bangkok" },
+  { label: "Mumbai", value: "Mumbai" },
+  { label: "Toronto", value: "Toronto" },
+];
 
 type CampaignCard = {
   id: string;
@@ -54,6 +114,9 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignCard[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pendingApprove, setPendingApprove] = useState<string | null>(null);
+  const [activeCampaignName, setActiveCampaignName] = useState<string | null>(null);
+  const [approveWarning, setApproveWarning] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const lastCampaignId =
@@ -64,6 +127,15 @@ export default function CampaignsPage() {
       resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [lastCampaignId]);
+
+  useEffect(() => {
+    fetchBusinessProfile().then((res) => {
+      if (res.profile) {
+        if (!city && res.profile.city) setCity(res.profile.city);
+        if (!country && res.profile.country) setCountry(res.profile.country);
+      }
+    }).catch(() => {});
+  }, []);
 
   async function handleGenerate() {
     if (!prompt.trim()) return;
@@ -99,7 +171,23 @@ export default function CampaignsPage() {
     }
   }
 
-  async function handleApprove(campaignId: string) {
+  async function handleApproveClick(campaignId: string) {
+    setApproveWarning(null);
+    try {
+      const data = await fetchActiveCampaign();
+      if (data.campaign) {
+        const name = data.campaign.campaign_name || data.campaign.campaign_id;
+        setActiveCampaignName(name);
+        setPendingApprove(campaignId);
+      } else {
+        await doApprove(campaignId);
+      }
+    } catch {
+      await doApprove(campaignId);
+    }
+  }
+
+  async function doApprove(campaignId: string) {
     setActionLoading(campaignId);
     setCampaigns((prev) =>
       prev.map((c) =>
@@ -107,7 +195,10 @@ export default function CampaignsPage() {
       ),
     );
     try {
-      await approveCampaign(campaignId);
+      const result = await approveCampaign(campaignId);
+      if (result.warning) {
+        setApproveWarning(result.warning);
+      }
     } catch {
       setCampaigns((prev) =>
         prev.map((c) =>
@@ -163,6 +254,38 @@ export default function CampaignsPage() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8 p-6">
+      <AlertDialog
+        open={pendingApprove !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingApprove(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Active Campaign Detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Another campaign is currently active. Approving this one will
+              deactivate the previous campaign (<span className="font-medium text-foreground">{activeCampaignName}</span>).
+              Only one campaign can be active at a time.
+              <br /><br />
+              Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const id = pendingApprove;
+                setPendingApprove(null);
+                if (id) doApprove(id);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           Campaign Generator
@@ -183,31 +306,25 @@ export default function CampaignsPage() {
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                 Country
               </label>
-              <div className="relative">
-                <MapPin className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  className="flex h-9 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:opacity-50"
-                  placeholder="e.g. USA"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <Combobox
+                value={country}
+                onChange={setCountry}
+                options={COUNTRIES}
+                placeholder="Select or type country..."
+                searchPlaceholder="Search country..."
+              />
             </div>
             <div className="flex-1">
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                 City
               </label>
-              <div className="relative">
-                <MapPin className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  className="flex h-9 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:opacity-50"
-                  placeholder="e.g. Houston"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <Combobox
+                value={city}
+                onChange={setCity}
+                options={CITIES}
+                placeholder="Select or type city..."
+                searchPlaceholder="Search city..."
+              />
             </div>
           </div>
           <Textarea
@@ -289,42 +406,52 @@ export default function CampaignsPage() {
                 </div>
               </CardContent>
               <Separator />
-              <CardFooter className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  Status: {campaign.status}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReject(campaign.campaignId)}
-                    disabled={
-                      campaign.status !== "Draft" ||
-                      actionLoading === campaign.campaignId
-                    }
-                  >
-                    {actionLoading === campaign.campaignId ? (
-                      <Loader2 className="mr-1 size-3.5 animate-spin" />
-                    ) : (
-                      <ThumbsDown className="mr-1 size-3.5" />
-                    )}
-                    Reject
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(campaign.campaignId)}
-                    disabled={
-                      campaign.status !== "Draft" ||
-                      actionLoading === campaign.campaignId
-                    }
-                  >
-                    {actionLoading === campaign.campaignId ? (
-                      <Loader2 className="mr-1 size-3.5 animate-spin" />
-                    ) : (
-                      <ThumbsUp className="mr-1 size-3.5" />
-                    )}
-                    Approve
-                  </Button>
+              <CardFooter className="flex flex-col gap-2">
+                {campaign.campaignId === pendingApprove && (
+                  <p className="text-xs text-amber-600">
+                    Checking for active campaign…
+                  </p>
+                )}
+                {approveWarning && (
+                  <p className="text-xs text-amber-600">{approveWarning}</p>
+                )}
+                <div className="flex w-full items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Status: {campaign.status}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReject(campaign.campaignId)}
+                      disabled={
+                        campaign.status !== "Draft" ||
+                        actionLoading === campaign.campaignId
+                      }
+                    >
+                      {actionLoading === campaign.campaignId ? (
+                        <Loader2 className="mr-1 size-3.5 animate-spin" />
+                      ) : (
+                        <ThumbsDown className="mr-1 size-3.5" />
+                      )}
+                      Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApproveClick(campaign.campaignId)}
+                      disabled={
+                        campaign.status !== "Draft" ||
+                        actionLoading === campaign.campaignId
+                      }
+                    >
+                      {actionLoading === campaign.campaignId ? (
+                        <Loader2 className="mr-1 size-3.5 animate-spin" />
+                      ) : (
+                        <ThumbsUp className="mr-1 size-3.5" />
+                      )}
+                      Approve
+                    </Button>
+                  </div>
                 </div>
               </CardFooter>
             </Card>

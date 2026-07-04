@@ -7,6 +7,9 @@ Based on the signals, produce a recommendation with these fields:
 - Offer (e.g. "15% off SUV rentals + free child seat for 3+ day rentals")
 - Audience (e.g. "Houston families planning weekend getaways")
 - Budget in local currency (e.g. "5,000 PKR", "300 USD")
+- A "What We Learned" section connecting to past campaign data:
+  "Previous high-scoring campaigns used [offer/audience]. This recommendation
+   [builds on / adapts / diverges from] that approach because [reason]."
 - Why this campaign — 2-3 short bullet points
 
 Track every numeric claim internally with [SOURCE: source_name] for validation.
