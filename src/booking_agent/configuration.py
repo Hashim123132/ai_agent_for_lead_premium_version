@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 
-from appointment_agent import prompts
+from booking_agent import prompts
 
 
 @dataclass(kw_only=True)

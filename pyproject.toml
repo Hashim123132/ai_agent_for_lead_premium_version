@@ -40,18 +40,30 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = [
-    "appointment_agent",
+    "booking_agent",
     "marketing_agent",
     "marketing_agent.tools",
     "marketing_agent.nodes",
+    "pricing_agent",
+    "pricing_agent.tools",
+    "pricing_agent.nodes",
+    "lead_gen_agent",
+    "lead_gen_agent.tools",
+    "lead_gen_agent.nodes",
     "shared",
     "shared.integrations",
 ]
 [tool.setuptools.package-dir]
-"appointment_agent" = "src/appointment_agent"
+"booking_agent" = "src/booking_agent"
 "marketing_agent" = "src/marketing_agent"
 "marketing_agent.tools" = "src/marketing_agent/tools"
 "marketing_agent.nodes" = "src/marketing_agent/nodes"
+"pricing_agent" = "src/pricing_agent"
+"pricing_agent.tools" = "src/pricing_agent/tools"
+"pricing_agent.nodes" = "src/pricing_agent/nodes"
+"lead_gen_agent" = "src/lead_gen_agent"
+"lead_gen_agent.tools" = "src/lead_gen_agent/tools"
+"lead_gen_agent.nodes" = "src/lead_gen_agent/nodes"
 "shared" = "src/shared"
 "shared.integrations" = "src/shared/integrations"
 

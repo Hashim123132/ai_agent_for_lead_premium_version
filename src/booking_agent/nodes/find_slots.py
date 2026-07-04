@@ -4,8 +4,8 @@ from dotenv import find_dotenv, load_dotenv
 
 from langchain_core.messages import ToolMessage
 
-from appointment_agent.state import AppointmentAgentState
-from appointment_agent.nodes._tools import schedule_tools_set
+from booking_agent.state import AppointmentAgentState
+from booking_agent.nodes._tools import schedule_tools_set
 
 _: bool = load_dotenv(find_dotenv())
 

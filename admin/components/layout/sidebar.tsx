@@ -81,7 +81,7 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
           A
         </div>
         <span className="font-semibold text-sidebar-foreground">
-          AppointFlow
+          BookFlow
         </span>
       </div>
       <Separator />
@@ -183,7 +183,7 @@ export default function Sidebar() {
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
                   A
                 </div>
-                <span className="font-semibold text-sidebar-foreground">AppointFlow</span>
+                <span className="font-semibold text-sidebar-foreground">BookFlow</span>
               </div>
               <button
                 onClick={() => setOpen(false)}

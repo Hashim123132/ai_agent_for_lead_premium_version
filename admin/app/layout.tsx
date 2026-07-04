@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AppointFlow",
-  description: "Appointment & Campaign Management",
+  title: "BookFlow",
+  description: "Booking & Campaign Management",
 };
 
 export default function RootLayout({

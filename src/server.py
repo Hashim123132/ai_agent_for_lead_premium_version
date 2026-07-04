@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import requests
 
-from appointment_agent import appointment_agent_graph
-from appointment_agent.followup import FollowupManager
+from booking_agent import booking_agent_graph
+from booking_agent.followup import FollowupManager
 from lead_gen_agent import lead_gen_agent_graph
 from marketing_agent import marketing_agent_graph
 from pricing_agent import pricing_agent_graph
@@ -109,7 +109,7 @@ async def _handle_message(sender_id: str, text: str):
     state = {"messages": [*history, ("user", text)]}
 
     try:
-        result = await appointment_agent_graph.ainvoke(state)
+        result = await booking_agent_graph.ainvoke(state)
         logger.info("[%s] Graph finished", sender_id)
 
         new_messages = result.get("messages", [])
@@ -564,7 +564,7 @@ async def ad_suggestions_search(request: Request):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "agent": appointment_agent_graph.name}
+    return {"status": "ok", "agent": booking_agent_graph.name}
 
 
 @app.on_event("startup")

@@ -3,10 +3,10 @@
 import os
 import dotenv
 import logging
-from appointment_agent.tools.get_available_cars import get_available_cars
-from appointment_agent.tools.mark_car_unavailable import mark_car_unavailable
-from appointment_agent.tools.save_booking import save_booking
-from appointment_agent.tools.check_car_availability import check_car_availability
+from booking_agent.tools.get_available_cars import get_available_cars
+from booking_agent.tools.mark_car_unavailable import mark_car_unavailable
+from booking_agent.tools.save_booking import save_booking
+from booking_agent.tools.check_car_availability import check_car_availability
 from langgraph.prebuilt import ToolNode
 from composio import Composio
 from composio_langgraph import LanggraphProvider

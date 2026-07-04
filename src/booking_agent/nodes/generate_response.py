@@ -6,9 +6,9 @@ from langchain_mistralai import ChatMistralAI
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
-from appointment_agent.state import AppointmentAgentState
-from appointment_agent.prompts import AGENT_SYSTEM
-from appointment_agent.nodes._tools import schedule_tools_set
+from booking_agent.state import AppointmentAgentState
+from booking_agent.prompts import AGENT_SYSTEM
+from booking_agent.nodes._tools import schedule_tools_set
 
 model = ChatMistralAI(model = "mistral-small-latest")
 

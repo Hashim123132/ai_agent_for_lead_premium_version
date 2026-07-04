@@ -3,9 +3,9 @@ from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 # from langgraph.prebuilt import tools_condition
-from appointment_agent.configuration import Configuration
-from appointment_agent.state import AppointmentAgentState
-from appointment_agent.nodes import generate_response, find_car_availability, schedule_booking_tools_write_node
+from booking_agent.configuration import Configuration
+from booking_agent.state import AppointmentAgentState
+from booking_agent.nodes import generate_response, find_car_availability, schedule_booking_tools_write_node
 
 async def booking_tools_condition(state: AppointmentAgentState) -> Literal["find_car_availability",  "booking_tools", "__end__"]:
     """
@@ -32,6 +32,6 @@ builder.add_conditional_edges("agent", booking_tools_condition, ["booking_tools"
 builder.add_edge("booking_tools", "agent")
 builder.add_edge("find_car_availability", "agent")
 
-appointment_agent_graph = builder.compile()
+booking_agent_graph = builder.compile()
 
-appointment_agent_graph.name = "appointment_agent_graph"
+booking_agent_graph.name = "booking_agent_graph"

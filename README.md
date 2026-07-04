@@ -84,7 +84,7 @@
                     +----------+----------+
                                | ainvoke()
                     +----------v----------+
-                    | appointment_agent   |
+                    | booking_agent   |
                     |  graph.py           |
                     |  (StateGraph)       |
                     +----------+----------+
@@ -191,7 +191,7 @@ uv run langgraph dev
 ├── .env.example                     # Environment variable template
 ├── src/
 │   ├── server.py                    # FastAPI webhook server (Facebook Messenger)
-│   ├── appointment_agent/           # Primary: car rental booking agent
+│   ├── booking_agent/           # Primary: car rental booking agent
 │   │   ├── graph.py                 # StateGraph definition
 │   │   ├── state.py                 # State schema
 │   │   ├── configuration.py         # Configurable parameters
