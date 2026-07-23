@@ -67,11 +67,13 @@ export default function FacebookPage() {
   const [captionTone, setCaptionTone] = useState("Professional");
   const [generatedCaption, setGeneratedCaption] = useState("");
   const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagText, setHashtagText] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [generatingCaption, setGeneratingCaption] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishedId, setPublishedId] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadAll = async () => {
@@ -128,6 +130,7 @@ export default function FacebookPage() {
       const result = await fbGenerateCaption(captionGoal, captionTone);
       setGeneratedCaption(result.caption);
       setHashtags(result.hashtags);
+      setHashtagText(result.hashtags.join(", "));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -148,18 +151,19 @@ export default function FacebookPage() {
     if (!generatedCaption.trim()) return;
     setPublishing(true);
     try {
-      const result = await fbPublishPost(
-        generatedCaption + (hashtags.length ? "\n\n" + hashtags.map((h) => `#${h}`).join(" ") : ""),
-        imagePreview || undefined,
-      );
+      const fullMessage =
+        generatedCaption + (hashtags.length ? "\n\n" + hashtags.map((h) => `#${h}`).join(" ") : "");
+      const result = await fbPublishPost(fullMessage, imageFile || undefined);
       setPublishedId(result.post_id);
+      setPublishError(null);
       setGeneratedCaption("");
       setHashtags([]);
+      setHashtagText("");
       setImageFile(null);
       setImagePreview(null);
       setCaptionGoal("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Publish failed");
+      setPublishError(e instanceof Error ? e.message : "Publish failed");
     } finally {
       setPublishing(false);
     }
@@ -267,7 +271,7 @@ export default function FacebookPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Facebook</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Facebook Insights</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Page insights, post performance, and AI-powered publishing.
           </p>
@@ -293,13 +297,13 @@ export default function FacebookPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as PageTab)}>
         <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="dashboard">Insights</TabsTrigger>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="create">Create Post</TabsTrigger>
         </TabsList>
 
         {/* ----------------------------------------------------------------- */}
-        {/* DASHBOARD TAB */}
+        {/* INSIGHTS TAB */}
         {/* ----------------------------------------------------------------- */}
         <TabsContent value="dashboard">
           <div className="flex flex-col gap-6">
@@ -430,7 +434,7 @@ export default function FacebookPage() {
                     <div>
                       <h4 className="mb-1 text-sm font-medium">Recommendations</h4>
                       <ul className="space-y-1.5">
-                        {analysis.recommendations.map((r, i) => (
+                        {(analysis.recommendations ?? []).map((r, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
                             <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-primary" />
                             {r}
@@ -496,18 +500,30 @@ export default function FacebookPage() {
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Generate Caption</CardTitle>
+                  <CardTitle className="text-base">Write or Generate Caption</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium">
-                      What is this post about?
+                      Caption <span className="text-muted-foreground">(write your own or use AI below)</span>
+                    </label>
+                    <Textarea
+                      placeholder="Type your caption here..."
+                      value={generatedCaption}
+                      onChange={(e) => setGeneratedCaption(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  <Separator />
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium">
+                      AI Assist — what is this post about?
                     </label>
                     <Textarea
                       placeholder="e.g. Promote weekend SUV rental deals with 20% discount"
                       value={captionGoal}
                       onChange={(e) => setCaptionGoal(e.target.value)}
-                      rows={3}
+                      rows={2}
                     />
                   </div>
                   <div>
@@ -535,7 +551,7 @@ export default function FacebookPage() {
                     ) : (
                       <Sparkles className="mr-2 size-4" />
                     )}
-                    Generate Caption
+                    Generate with AI
                   </Button>
                 </CardContent>
               </Card>
@@ -587,14 +603,32 @@ export default function FacebookPage() {
                       </div>
                     )}
                     <div className="space-y-3 p-4">
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {generatedCaption || "Your generated caption will appear here..."}
-                      </p>
-                      {hashtags.length > 0 && (
-                        <p className="text-sm text-muted-foreground">
-                          {hashtags.map((h) => `#${h}`).join(" ")}
-                        </p>
-                      )}
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Caption <span className="font-normal">(edit freely)</span>
+                      </label>
+                      <Textarea
+                        placeholder="Write your caption here..."
+                        value={generatedCaption}
+                        onChange={(e) => setGeneratedCaption(e.target.value)}
+                        rows={4}
+                        className="min-h-[80px]"
+                      />
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Hashtags <span className="font-normal">(comma-separated)</span>
+                      </label>
+                      <Input
+                        placeholder="e.g. carrental, dubai, suv"
+                        value={hashtagText}
+                        onChange={(e) => {
+                          setHashtagText(e.target.value);
+                          setHashtags(
+                            e.target.value
+                              .split(",")
+                              .map((h) => h.trim())
+                              .filter(Boolean),
+                          );
+                        }}
+                      />
                     </div>
                   </div>
 
@@ -614,9 +648,27 @@ export default function FacebookPage() {
                   </div>
 
                   {publishedId && (
-                    <p className="mt-2 text-center text-xs text-green-600 dark:text-green-400">
-                      Published! Post ID: {publishedId}
-                    </p>
+                    <Card className="border-green-500 bg-green-50 dark:bg-green-950">
+                      <CardContent className="flex items-center gap-3 py-4">
+                        <Send className="size-5 shrink-0 text-green-600" />
+                        <div>
+                          <p className="text-sm font-medium text-green-700 dark:text-green-300">
+                            Published successfully!
+                          </p>
+                          <p className="text-xs text-green-600 dark:text-green-400">
+                            Post ID: {publishedId}. Check your Facebook Page to view it.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {publishError && (
+                    <Card className="border-destructive">
+                      <CardContent className="flex items-center gap-3 py-4">
+                        <span className="text-sm text-destructive">{publishError}</span>
+                      </CardContent>
+                    </Card>
                   )}
                 </CardContent>
               </Card>

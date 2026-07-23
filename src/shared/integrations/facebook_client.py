@@ -142,9 +142,25 @@ class FacebookClient:
                 pass
         return snapshots
 
+    def _post_multipart(self, path: str, data: dict, files: dict | None = None) -> dict:
+        data["access_token"] = self.token
+        resp = requests.post(f"{GRAPH_URL}/{path}", data=data, files=files, timeout=60)
+        resp.raise_for_status()
+        return resp.json()
+
     def create_post(self, message: str, image_url: str | None = None) -> dict:
         page_id = self.get_page_id()
         if image_url:
             data = {"message": message, "url": image_url}
             return self._post(f"{page_id}/photos", data)
         return self._post(f"{page_id}/feed", {"message": message})
+
+    def create_post_with_image_bytes(
+        self, message: str, image_bytes: bytes, filename: str = "image.jpg"
+    ) -> dict:
+        page_id = self.get_page_id()
+        return self._post_multipart(
+            f"{page_id}/photos",
+            data={"message": message, "published": "true"},
+            files={"source": (filename, image_bytes, "image/jpeg")},
+        )

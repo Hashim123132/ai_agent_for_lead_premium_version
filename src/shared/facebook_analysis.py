@@ -1,21 +1,23 @@
 import json
-import os
 from typing import Any
 
 from shared.facebook_insights_service import compute_post_summary, get_all_posts, get_page_insights_history
 
 try:
-    from mistralai import Mistral
+    from langchain_mistralai import ChatMistralAI
 
-    _client: Mistral | None = Mistral(api_key=os.getenv("MISTRAL_API_KEY", ""))
+    _llm: ChatMistralAI | None = ChatMistralAI(
+        model="mistral-large-latest",
+        temperature=0.3,
+    )
 except Exception:
-    _client = None
+    _llm = None
 
 
-def _get_client() -> Any:
-    if _client is None:
+def _get_llm() -> Any:
+    if _llm is None:
         raise RuntimeError("Mistral AI client not available. Set MISTRAL_API_KEY.")
-    return _client
+    return _llm
 
 
 ANALYSIS_PROMPT = """You are a social media analytics expert. Analyze the provided Facebook Page post summary and produce an evidence-based report.
@@ -66,21 +68,20 @@ def analyze_posts() -> dict:
         "page_insights_30d": insights_history[-7:] if insights_history else [],
     }
 
-    client = _get_client()
-    response = client.chat.complete(
-        model="mistral-large-latest",
-        messages=[
-            {"role": "system", "content": ANALYSIS_PROMPT},
-            {"role": "user", "content": json.dumps(payload, indent=2)},
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.3,
-    )
+    llm = _get_llm()
+    response = llm.invoke([
+        ("system", ANALYSIS_PROMPT),
+        ("human", json.dumps(payload, indent=2)),
+    ])
 
-    content = response.choices[0].message.content
+    content = response.content
+    # strip markdown code fences if present
+    if content.startswith("```"):
+        content = content.strip("`").strip()
+        if content.startswith("json"):
+            content = content[4:].strip()
     result = json.loads(content)
 
-    # fallback defaults for null values
     if not result.get("best_posting_times"):
         result["best_posting_times"] = "Insufficient data to determine optimal posting times."
     if not result.get("best_content_types"):
@@ -109,18 +110,17 @@ Return ONLY a JSON object: {"caption": "the caption text", "hashtags": ["tag1", 
 
 
 def generate_caption(goal: str, tone: str = "Professional") -> dict:
-    client = _get_client()
-    response = client.chat.complete(
-        model="mistral-large-latest",
-        messages=[
-            {"role": "system", "content": CAPTION_PROMPT},
-            {
-                "role": "user",
-                "content": f"Goal: {goal}\nTone: {tone}\nBusiness: Car rental company with SUVs, sedans, luxury, and economy vehicles.",
-            },
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.7,
-    )
-    content = response.choices[0].message.content
+    llm = _get_llm()
+    response = llm.invoke([
+        ("system", CAPTION_PROMPT),
+        (
+            "human",
+            f"Goal: {goal}\nTone: {tone}\nBusiness: Car rental company with SUVs, sedans, luxury, and economy vehicles.",
+        ),
+    ])
+    content = response.content
+    if content.startswith("```"):
+        content = content.strip("`").strip()
+        if content.startswith("json"):
+            content = content[4:].strip()
     return json.loads(content)

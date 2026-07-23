@@ -9,7 +9,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import requests
@@ -759,15 +759,19 @@ async def fb_generate_caption(request: Request):
 
 
 @app.post("/facebook/publish")
-async def fb_publish(request: Request):
+async def fb_publish(
+    message: str = Form(...),
+    image: UploadFile | None = File(default=None),
+):
     try:
-        body = await request.json()
-        message = body.get("message", "")
-        image_url = body.get("image_url")
         if not message.strip():
             return {"status": "error", "error": "Message is required"}
         client = FacebookClient()
-        result = client.create_post(message, image_url)
+        if image and image.file:
+            image_bytes = await image.read()
+            result = client.create_post_with_image_bytes(message, image_bytes, image.filename or "image.jpg")
+        else:
+            result = client.create_post(message)
         return {"status": "ok", "post_id": result.get("id", "")}
     except Exception as e:
         logger.error("Facebook publish error: %s", e, exc_info=True)
