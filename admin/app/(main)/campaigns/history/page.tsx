@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { approveCampaign, evaluateCampaign, fetchCampaigns, fetchActiveCampaign, rejectCampaign } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Loader2,
   Clock,
@@ -215,17 +216,6 @@ export default function CampaignHistoryPage() {
     [campaigns],
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">Loading campaign history…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
@@ -337,7 +327,29 @@ export default function CampaignHistoryPage() {
         </CardContent>
       </Card>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="size-4 rounded-sm" />
+                    <div>
+                      <Skeleton className="h-4 w-36" />
+                      <div className="mt-1 flex items-center gap-2">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-3 w-28" />
+                      </div>
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12">
             <Clock className="size-8 text-muted-foreground" />

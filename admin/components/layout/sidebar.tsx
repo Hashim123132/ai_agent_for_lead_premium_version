@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -22,12 +22,14 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  MessageCircle,
 } from "lucide-react"
 
 type NavItem = { href: string; label: string; icon: React.ElementType }
 
 const topItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/facebook", label: "Facebook", icon: MessageCircle },
 ]
 
 const campaignItems: NavItem[] = [
@@ -68,8 +70,11 @@ function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string;
 }
 
 function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => void }) {
+  const [mounted, setMounted] = useState(false)
   const [groupOpen, setGroupOpen] = useState(true)
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => { setMounted(true) }, [])
   const groupActive = campaignItems.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   )
@@ -148,8 +153,8 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
-          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+          {mounted ? (theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />) : <Sun className="size-4" />}
+          {mounted ? (theme === "dark" ? "Light Mode" : "Dark Mode") : "Light Mode"}
         </button>
       </div>
     </>

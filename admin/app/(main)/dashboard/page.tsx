@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchCampaigns, fetchMetrics } from "@/lib/api";
 import {
-  Loader2,
   Car,
   CalendarCheck,
   TrendingUp,
@@ -89,6 +89,77 @@ function MetricCard({
   );
 }
 
+function MetricCardSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="size-4 rounded-sm" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="mt-2 h-3 w-32" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function PopularCarsSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-36" />
+      </CardHeader>
+      <Separator />
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-7 rounded-full" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CampaignImpactSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded-sm" />
+          <Skeleton className="h-5 w-36" />
+        </div>
+      </CardHeader>
+      <Separator />
+      <CardContent className="pt-6">
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between rounded-md border p-3">
+              <div className="flex-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-1 h-3 w-24" />
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <Skeleton className="h-3 w-10 ml-auto" />
+                  <Skeleton className="mt-1 h-5 w-12 ml-auto" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [evaluated, setEvaluated] = useState<CampaignSummary[]>([]);
@@ -120,17 +191,6 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-          <Loader2 className="size-8 animate-spin" />
-          <p className="text-sm">Loading business metrics…</p>
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
@@ -139,8 +199,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  if (!metrics) return null;
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
@@ -151,88 +209,105 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          title="Total Cars"
-          value={metrics.totalCars}
-          subtitle={`${metrics.availableCars} available`}
-          icon={Car}
-        />
-        <MetricCard
-          title="Occupancy Rate"
-          value={`${metrics.occupancyRate}%`}
-          subtitle={`${metrics.totalCars - metrics.availableCars} of ${metrics.totalCars} cars booked`}
-          icon={TrendingUp}
-        />
-        <MetricCard
-          title="Total Bookings"
-          value={metrics.totalBookings}
-          icon={CalendarCheck}
-        />
-        <MetricCard
-          title="Bookings (30d)"
-          value={metrics.recentBookings}
-          subtitle="Last 30 days"
-          icon={Users}
-        />
-      </div>
-
-      {metrics.popularCars.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Most Popular Cars</CardTitle>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              {metrics.popularCars.map((car, idx) => (
-                <div key={car.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                      {idx + 1}
-                    </span>
-                    <span className="text-sm font-medium">{car.name}</span>
-                  </div>
-                  <Badge variant="secondary">{car.count} bookings</Badge>
-                </div>
-              ))}
+      {loading ? (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+            <MetricCardSkeleton />
+          </div>
+          <PopularCarsSkeleton />
+          <CampaignImpactSkeleton />
+        </>
+      ) : (
+        <>
+          {metrics && (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <MetricCard
+                title="Total Cars"
+                value={metrics.totalCars}
+                subtitle={`${metrics.availableCars} available`}
+                icon={Car}
+              />
+              <MetricCard
+                title="Occupancy Rate"
+                value={`${metrics.occupancyRate}%`}
+                subtitle={`${metrics.totalCars - metrics.availableCars} of ${metrics.totalCars} cars booked`}
+                icon={TrendingUp}
+              />
+              <MetricCard
+                title="Total Bookings"
+                value={metrics.totalBookings}
+                icon={CalendarCheck}
+              />
+              <MetricCard
+                title="Bookings (30d)"
+                value={metrics.recentBookings}
+                subtitle="Last 30 days"
+                icon={Users}
+              />
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {evaluated.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">Campaign Impact</CardTitle>
-            </div>
-          </CardHeader>
-          <Separator />
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              {evaluated.map((c) => (
-                <div key={c.campaign_id} className="flex items-center justify-between rounded-md border p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {c.campaign_name || "Campaign"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[c.market_city, c.market_country].filter(Boolean).join(", ") || "—"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Score</p>
-                      <p className="text-lg font-bold">{c.result_score}/10</p>
+          {metrics && metrics.popularCars.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Most Popular Cars</CardTitle>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {metrics.popularCars.map((car, idx) => (
+                    <div key={car.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                          {idx + 1}
+                        </span>
+                        <span className="text-sm font-medium">{car.name}</span>
+                      </div>
+                      <Badge variant="secondary">{car.count} bookings</Badge>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          )}
+
+          {evaluated.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="size-4 text-muted-foreground" />
+                  <CardTitle className="text-base">Campaign Impact</CardTitle>
+                </div>
+              </CardHeader>
+              <Separator />
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  {evaluated.map((c) => (
+                    <div key={c.campaign_id} className="flex items-center justify-between rounded-md border p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {c.campaign_name || "Campaign"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {[c.market_city, c.market_country].filter(Boolean).join(", ") || "—"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Score</p>
+                          <p className="text-lg font-bold">{c.result_score}/10</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );

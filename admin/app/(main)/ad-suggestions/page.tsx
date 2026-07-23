@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Loader2,
   AlertCircle,
@@ -288,12 +289,20 @@ export default function AdSuggestionsPage() {
       )}
 
       {loading && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="size-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{LOADING_MESSAGES[mode]}</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-40" />
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="overflow-hidden rounded-lg border">
+                <Skeleton className="aspect-[4/3] w-full" />
+                <div className="p-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="mt-1.5 h-3 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {ads && ads.length > 0 && (
@@ -358,9 +367,19 @@ export default function AdSuggestionsPage() {
 
       {analysisLoading && ads && (
         <Card>
-          <CardContent className="flex items-center gap-3 py-6">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Analyzing relevant patterns...</p>
+          <CardContent className="space-y-4 py-6">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-5 rounded-full" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                  <Skeleton className="mb-1 h-3 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

@@ -146,6 +146,8 @@ venv.bak/
 .dmypy.json
 dmypy.json
 credentials.json
+whatsapp-gen-lead-70ae6503010b.json
+
 
 # Pyre type checker
 .pyre/
@@ -167,3 +169,6 @@ cython_debug/
 
 
 *.txt
+check_keys.sh
+
+

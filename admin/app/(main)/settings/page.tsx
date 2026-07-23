@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Combobox } from "@/components/ui/combobox";
 import { fetchBusinessProfile, updateBusinessProfile } from "@/lib/api";
 import type { BusinessProfile } from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, Save, AlertCircle, CheckCircle2, Store, MapPin, Car, DollarSign, Palette, Users, Megaphone, Target } from "lucide-react";
 
 const COUNTRIES = [
@@ -116,14 +117,6 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-3xl space-y-8 p-6">
       <div>
@@ -142,178 +135,210 @@ export default function SettingsPage() {
         </Card>
       )}
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Store className="size-4" />
-              Business Identity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Business Name</label>
-              <Input
-                placeholder="e.g. Hashim Car Rentals"
-                value={profile?.business_name ?? ""}
-                onChange={(e) => update("business_name", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
-                <MapPin className="size-3.5" />
-                City
-              </label>
-              <Combobox
-                value={profile?.city ?? ""}
-                onChange={(v) => update("city", v)}
-                options={[
-                  { label: "Dubai", value: "Dubai" },
-                  { label: "Abu Dhabi", value: "Abu Dhabi" },
-                  { label: "Houston", value: "Houston" },
-                  { label: "New York", value: "New York" },
-                  { label: "Los Angeles", value: "Los Angeles" },
-                  { label: "Miami", value: "Miami" },
-                  { label: "Chicago", value: "Chicago" },
-                  { label: "London", value: "London" },
-                  { label: "Paris", value: "Paris" },
-                  { label: "Berlin", value: "Berlin" },
-                  { label: "Riyadh", value: "Riyadh" },
-                  { label: "Doha", value: "Doha" },
-                  { label: "Kuwait City", value: "Kuwait City" },
-                  { label: "Muscat", value: "Muscat" },
-                  { label: "Manama", value: "Manama" },
-                  { label: "Cairo", value: "Cairo" },
-                  { label: "Istanbul", value: "Istanbul" },
-                  { label: "Singapore", value: "Singapore" },
-                  { label: "Kuala Lumpur", value: "Kuala Lumpur" },
-                  { label: "Bangkok", value: "Bangkok" },
-                  { label: "Mumbai", value: "Mumbai" },
-                  { label: "Toronto", value: "Toronto" },
-                ]}
-                placeholder="Select or type city..."
-                searchPlaceholder="Search city..."
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Country</label>
-              <Combobox
-                value={profile?.country ?? ""}
-                onChange={(v) => update("country", v)}
-                options={COUNTRIES}
-                placeholder="Select or type country..."
-                searchPlaceholder="Search country..."
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Car className="size-4" />
-              Fleet & Budget
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Fleet Types</label>
-              <Combobox
-                value={profile?.fleet_types ?? ""}
-                onChange={(v) => update("fleet_types", v)}
-                options={FLEET_OPTIONS}
-                placeholder="Select or type fleet type..."
-                searchPlaceholder="Search fleet..."
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
-                <DollarSign className="size-3.5" />
-                Budget Range
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+      {loading ? (
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <div><Skeleton className="mb-1.5 h-4 w-28" /><Skeleton className="h-9 w-full" /></div>
+              <div><Skeleton className="mb-1.5 h-4 w-16" /><Skeleton className="h-9 w-full" /></div>
+              <div><Skeleton className="mb-1.5 h-4 w-20" /><Skeleton className="h-9 w-full" /></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div><Skeleton className="mb-1.5 h-4 w-24" /><Skeleton className="h-9 w-full" /></div>
+              <div><Skeleton className="mb-1.5 h-4 w-28" /><Skeleton className="h-9 w-full" /></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-36" /></CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div><Skeleton className="mb-1.5 h-4 w-24" /><Skeleton className="h-9 w-full" /></div>
+              <div><Skeleton className="mb-1.5 h-4 w-28" /><Skeleton className="h-9 w-full" /></div>
+              <div className="sm:col-span-2"><Skeleton className="mb-1.5 h-4 w-48" /><Skeleton className="h-9 w-full" /></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-32" /><Skeleton className="mt-1 h-3 w-64" /></CardHeader>
+            <CardContent><Skeleton className="h-20 w-full" /></CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Store className="size-4" />
+                Business Identity
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Business Name</label>
                 <Input
-                  placeholder="Min"
-                  value={profile?.budget_min ?? ""}
-                  onChange={(e) => update("budget_min", e.target.value)}
-                />
-                <Input
-                  placeholder="Max"
-                  value={profile?.budget_max ?? ""}
-                  onChange={(e) => update("budget_max", e.target.value)}
+                  placeholder="e.g. Hashim Car Rentals"
+                  value={profile?.business_name ?? ""}
+                  onChange={(e) => update("business_name", e.target.value)}
                 />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+                  <MapPin className="size-3.5" />
+                  City
+                </label>
+                <Combobox
+                  value={profile?.city ?? ""}
+                  onChange={(v) => update("city", v)}
+                  options={[
+                    { label: "Dubai", value: "Dubai" },
+                    { label: "Abu Dhabi", value: "Abu Dhabi" },
+                    { label: "Houston", value: "Houston" },
+                    { label: "New York", value: "New York" },
+                    { label: "Los Angeles", value: "Los Angeles" },
+                    { label: "Miami", value: "Miami" },
+                    { label: "Chicago", value: "Chicago" },
+                    { label: "London", value: "London" },
+                    { label: "Paris", value: "Paris" },
+                    { label: "Berlin", value: "Berlin" },
+                    { label: "Riyadh", value: "Riyadh" },
+                    { label: "Doha", value: "Doha" },
+                    { label: "Kuwait City", value: "Kuwait City" },
+                    { label: "Muscat", value: "Muscat" },
+                    { label: "Manama", value: "Manama" },
+                    { label: "Cairo", value: "Cairo" },
+                    { label: "Istanbul", value: "Istanbul" },
+                    { label: "Singapore", value: "Singapore" },
+                    { label: "Kuala Lumpur", value: "Kuala Lumpur" },
+                    { label: "Bangkok", value: "Bangkok" },
+                    { label: "Mumbai", value: "Mumbai" },
+                    { label: "Toronto", value: "Toronto" },
+                  ]}
+                  placeholder="Select or type city..."
+                  searchPlaceholder="Search city..."
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Country</label>
+                <Combobox
+                  value={profile?.country ?? ""}
+                  onChange={(v) => update("country", v)}
+                  options={COUNTRIES}
+                  placeholder="Select or type country..."
+                  searchPlaceholder="Search country..."
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Palette className="size-4" />
-              Brand & Audience
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Brand Tone</label>
-              <Combobox
-                value={profile?.brand_tone ?? ""}
-                onChange={(v) => update("brand_tone", v)}
-                options={TONE_OPTIONS}
-                placeholder="Select or type tone..."
-                searchPlaceholder="Search tone..."
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
-                <Users className="size-3.5" />
-                Target Market
-              </label>
-              <Combobox
-                value={profile?.target_market ?? ""}
-                onChange={(v) => update("target_market", v)}
-                options={MARKET_OPTIONS}
-                placeholder="Select or type market..."
-                searchPlaceholder="Search market..."
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
-                <Megaphone className="size-3.5" />
-                Preferred Marketing Channels
-              </label>
-              <Combobox
-                value={profile?.preferred_channels ?? ""}
-                onChange={(v) => update("preferred_channels", v)}
-                options={CHANNEL_OPTIONS}
-                placeholder="Select or type channel..."
-                searchPlaceholder="Search channel..."
-              />
-            </div>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Car className="size-4" />
+                Fleet & Budget
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Fleet Types</label>
+                <Combobox
+                  value={profile?.fleet_types ?? ""}
+                  onChange={(v) => update("fleet_types", v)}
+                  options={FLEET_OPTIONS}
+                  placeholder="Select or type fleet type..."
+                  searchPlaceholder="Search fleet..."
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+                  <DollarSign className="size-3.5" />
+                  Budget Range
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Min"
+                    value={profile?.budget_min ?? ""}
+                    onChange={(e) => update("budget_min", e.target.value)}
+                  />
+                  <Input
+                    placeholder="Max"
+                    value={profile?.budget_max ?? ""}
+                    onChange={(e) => update("budget_max", e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="size-4" />
-              Business Goals
-            </CardTitle>
-            <CardDescription>
-              These goals pre-fill the &quot;Goal&quot; field in Ad Suggestions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              placeholder="e.g. Increase bookings by 20%, promote SUVs, improve occupancy rate"
-              value={profile?.business_goals ?? ""}
-              onChange={(e) => update("business_goals", e.target.value)}
-              className="min-h-[80px]"
-            />
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Palette className="size-4" />
+                Brand & Audience
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Brand Tone</label>
+                <Combobox
+                  value={profile?.brand_tone ?? ""}
+                  onChange={(v) => update("brand_tone", v)}
+                  options={TONE_OPTIONS}
+                  placeholder="Select or type tone..."
+                  searchPlaceholder="Search tone..."
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+                  <Users className="size-3.5" />
+                  Target Market
+                </label>
+                <Combobox
+                  value={profile?.target_market ?? ""}
+                  onChange={(v) => update("target_market", v)}
+                  options={MARKET_OPTIONS}
+                  placeholder="Select or type market..."
+                  searchPlaceholder="Search market..."
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+                  <Megaphone className="size-3.5" />
+                  Preferred Marketing Channels
+                </label>
+                <Combobox
+                  value={profile?.preferred_channels ?? ""}
+                  onChange={(v) => update("preferred_channels", v)}
+                  options={CHANNEL_OPTIONS}
+                  placeholder="Select or type channel..."
+                  searchPlaceholder="Search channel..."
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Target className="size-4" />
+                Business Goals
+              </CardTitle>
+              <CardDescription>
+                These goals pre-fill the &quot;Goal&quot; field in Ad Suggestions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="e.g. Increase bookings by 20%, promote SUVs, improve occupancy rate"
+                value={profile?.business_goals ?? ""}
+                onChange={(e) => update("business_goals", e.target.value)}
+                className="min-h-[80px]"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={saving}>

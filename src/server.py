@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -23,6 +24,15 @@ from shared.business_profile import format_profile_for_prompt, get_profile, upda
 from shared.campaign_service import approve_campaign, evaluate_campaign, get_active_campaign, list_campaigns, reject_campaign, save_campaign
 from shared.integrations.sheets_client import get_all_records
 from shared.metrics_service import get_metrics_range, save_daily_metrics
+from shared.facebook_insights_service import (
+    compute_post_summary,
+    get_all_posts,
+    get_page_insights_history,
+    sync_page_insights,
+    sync_posts,
+)
+from shared.facebook_analysis import analyze_posts, generate_caption
+from shared.integrations.facebook_client import FacebookClient
 
 load_dotenv()
 
@@ -63,6 +73,81 @@ PROGRESS_LABELS = {
     "save_lead": "Saving lead to CRM...",
     "save_campaign_draft": "Finalizing campaign draft...",
 }
+
+
+def _extract_section(text: str, section_name: str, next_section_pattern: str) -> str | None:
+    pattern = rf'{re.escape(section_name)}\s*\n(.*?)(?=\n\s*(?:{next_section_pattern})\s*\n|\Z)'
+    m = re.search(pattern, text, re.DOTALL)
+    return m.group(1) if m else None
+
+
+def _parse_qualified_lead_block(block: str) -> dict | None:
+    lines = block.strip().split('\n')
+    if not lines:
+        return None
+    first = lines[0].strip()
+    m = re.match(r'\d+\.\s+(.+?)\s+\((.+?)\)\s*—\s*Score:\s*(\d+)/100', first)
+    if not m:
+        return None
+    lead: dict = {
+        'business_name': m.group(1).strip(),
+        'lead_type': m.group(2).strip(),
+        'score': int(m.group(3)),
+        'contact_info': '',
+        'status': 'Qualified',
+        'notes': '',
+        'source': '',
+    }
+    in_draft = False
+    draft_lines: list[str] = []
+    for line in lines[1:]:
+        s = line.strip()
+        if not s:
+            if in_draft:
+                draft_lines.append('')
+            continue
+        if s.startswith('Source:'):
+            lead['source'] = s.replace('Source:', '', 1).strip()
+        elif s.startswith('Contact:'):
+            lead['contact_info'] = s.replace('Contact:', '', 1).strip()
+        elif s.startswith('Status:'):
+            lead['status'] = s.replace('Status:', '', 1).strip()
+        elif s.startswith('Outreach Draft:'):
+            in_draft = True
+        elif in_draft:
+            draft_lines.append(s)
+    if draft_lines:
+        lead['notes'] = '\n'.join(draft_lines)
+    return lead
+
+
+def _parse_leads_from_text(text: str) -> list[dict]:
+    leads: list[dict] = []
+    qualified = _extract_section(text, 'Qualified Leads', r'(?:Cold Leads|Summary)')
+    if qualified:
+        blocks = re.split(r'\n(?=\d+\.\s)', qualified.strip())
+        for block in blocks:
+            lead = _parse_qualified_lead_block(block)
+            if lead:
+                leads.append(lead)
+    cold = _extract_section(text, 'Cold Leads', r'Summary')
+    if cold:
+        for line in cold.strip().split('\n'):
+            line = line.strip()
+            m = re.match(
+                r'[•\-]\s*(.+?)\s+\((.+?)\)\s*—\s*Score:\s*(\d+)/100\s*—\s*Reason:\s*(.+)',
+                line,
+            )
+            if m:
+                leads.append({
+                    'business_name': m.group(1).strip(),
+                    'lead_type': m.group(2).strip(),
+                    'score': int(m.group(3)),
+                    'notes': m.group(4).strip(),
+                    'contact_info': '',
+                    'status': 'Cold Lead',
+                })
+    return leads
 
 
 def _send_action(sender_id: str, action: str):
@@ -330,14 +415,34 @@ async def run_lead_gen(request: Request):
 
         try:
             final_messages = None
+            pending_leads: dict[str, dict] = {}
 
             async for event in lead_gen_agent_graph.astream_events(state, version="v2"):
                 kind = event["event"]
                 name = event.get("name", "")
+                run_id = event.get("run_id", "")
 
                 if kind == "on_tool_start" and name in PROGRESS_LABELS:
                     msg = json.dumps({"type": "progress", "message": PROGRESS_LABELS[name]})
                     yield f"data: {msg}\n\n"
+
+                if kind == "on_tool_start" and name == "save_lead":
+                    pending_leads[run_id] = event["data"].get("input", {})
+
+                if kind == "on_tool_end" and name == "save_lead":
+                    input_data = pending_leads.pop(run_id, None)
+                    if input_data:
+                        lead = {
+                            "business_name": input_data.get("business_name", ""),
+                            "lead_type": input_data.get("lead_type", ""),
+                            "contact_info": input_data.get("contact_info", ""),
+                            "score": input_data.get("score", 0),
+                            "notes": input_data.get("notes", ""),
+                            "outreach_draft": input_data.get("outreach_draft", ""),
+                            "source": input_data.get("source", ""),
+                            "status": "New",
+                        }
+                        yield f"data: {json.dumps({'type': 'lead', 'lead': lead})}\n\n"
 
                 if kind == "on_chat_model_start":
                     msg = json.dumps({"type": "progress", "message": "Generating lead strategy..."})
@@ -364,6 +469,10 @@ async def run_lead_gen(request: Request):
                 yield f"data: {msg}\n\n"
                 return
 
+            parsed = _parse_leads_from_text(response_text)
+            if parsed:
+                yield f"data: {json.dumps({'type': 'leads', 'leads': parsed})}\n\n"
+
             result = json.dumps({
                 "type": "result",
                 "status": "ok",
@@ -377,6 +486,33 @@ async def run_lead_gen(request: Request):
             yield f"data: {err}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/leads/save")
+async def save_lead_api(request: Request):
+    """Save a single lead to the CRM sheet."""
+    body = await request.json()
+    try:
+        from lead_gen_agent.tools.leads_crm import LEADS_HEADERS, SHEET_NAME
+        from shared.integrations.sheets_client import append_row, ensure_headers
+        ensure_headers(SHEET_NAME, LEADS_HEADERS)
+        append_row(SHEET_NAME, [
+            body.get("business_name", ""),
+            body.get("lead_type", body.get("type", "")),
+            body.get("source", ""),
+            body.get("city", ""),
+            body.get("country", ""),
+            body.get("contact_info", ""),
+            str(body.get("score", 0)),
+            body.get("status", "New"),
+            body.get("notes", ""),
+            body.get("outreach_draft", ""),
+            datetime.now().isoformat(),
+        ])
+        return {"status": "ok", "business_name": body.get("business_name", "")}
+    except Exception as e:
+        logger.error("Error saving lead: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @app.post("/campaign/approve")
@@ -560,6 +696,82 @@ async def ad_suggestions_search(request: Request):
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ---------------------------------------------------------------------------
+# Facebook Page Insights & Posting
+# ---------------------------------------------------------------------------
+
+
+@app.post("/facebook/sync")
+async def fb_sync():
+    try:
+        post_count = sync_posts()
+        insights = sync_page_insights()
+        return {"status": "ok", "new_posts": post_count, "insights": insights}
+    except Exception as e:
+        logger.error("Facebook sync error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/facebook/posts")
+async def fb_posts():
+    try:
+        posts = get_all_posts()
+        summary = compute_post_summary(posts)
+        return {"status": "ok", **summary}
+    except Exception as e:
+        logger.error("Facebook posts error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/facebook/insights")
+async def fb_insights(days: int = 30):
+    try:
+        history = get_page_insights_history(days=days)
+        return {"status": "ok", "history": history}
+    except Exception as e:
+        logger.error("Facebook insights error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/facebook/analyze")
+async def fb_analyze():
+    try:
+        analysis = analyze_posts()
+        return {"status": "ok", **analysis}
+    except Exception as e:
+        logger.error("Facebook analysis error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/facebook/generate-caption")
+async def fb_generate_caption(request: Request):
+    try:
+        body = await request.json()
+        goal = body.get("goal", "Promote our car rental services")
+        tone = body.get("tone", "Professional")
+        result = generate_caption(goal, tone)
+        return {"status": "ok", **result}
+    except Exception as e:
+        logger.error("Facebook caption error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
+@app.post("/facebook/publish")
+async def fb_publish(request: Request):
+    try:
+        body = await request.json()
+        message = body.get("message", "")
+        image_url = body.get("image_url")
+        if not message.strip():
+            return {"status": "error", "error": "Message is required"}
+        client = FacebookClient()
+        result = client.create_post(message, image_url)
+        return {"status": "ok", "post_id": result.get("id", "")}
+    except Exception as e:
+        logger.error("Facebook publish error: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/health")

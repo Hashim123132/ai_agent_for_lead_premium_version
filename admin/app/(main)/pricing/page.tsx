@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { generatePricingRecommendation, fetchBusinessProfile } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Loader2,
   Sparkles,
@@ -200,7 +201,7 @@ export default function PricingPage() {
       {loading && (
         <Card className="border-primary/30">
           <CardContent className="flex items-center gap-4 py-6">
-            <Loader2 className="size-6 animate-spin text-primary" />
+            <Skeleton className="size-6 rounded-full" />
             <div className="flex flex-col gap-0.5">
               <p className="text-sm font-medium">Working on your analysis</p>
               <p className="text-xs text-muted-foreground">{progressMsg}</p>
