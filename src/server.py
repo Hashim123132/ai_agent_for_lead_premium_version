@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from booking_agent import booking_agent_graph
 from booking_agent.followup import FollowupManager
+from booking_agent.new_conversation import is_new_conversation
 from lead_gen_agent import lead_gen_agent_graph
 from marketing_agent import marketing_agent_graph
 from pricing_agent import pricing_agent_graph
@@ -202,6 +203,9 @@ async def _handle_message(sender_id: str, text: str):
     refresher = asyncio.create_task(_keep_typing(sender_id))
 
     history = conversations.get(sender_id, [])
+    if await is_new_conversation(history, text):
+        logger.info("[%s] New conversation detected - starting fresh", sender_id)
+        history = []
     state = {"messages": [*history, ("user", text)]}
 
     try:
