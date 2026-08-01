@@ -585,6 +585,16 @@ async def campaigns():
         return {"status": "error", "error": str(e)}
 
 
+@app.get("/bookings")
+async def bookings():
+    try:
+        records = get_all_records("Bookings")
+        return {"status": "ok", "bookings": records}
+    except Exception as e:
+        logger.error("Error listing bookings: %s", e, exc_info=True)
+        return {"status": "error", "error": str(e)}
+
+
 @app.get("/metrics")
 async def metrics():
     try:

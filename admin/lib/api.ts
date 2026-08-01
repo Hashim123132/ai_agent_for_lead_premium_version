@@ -85,6 +85,15 @@ export async function fetchCampaigns(): Promise<{ campaigns: CampaignRecord[] }>
   return handleResponse<{ campaigns: CampaignRecord[] }>(res);
 }
 
+export interface BookingRecord {
+  [key: string]: string | number | boolean | null;
+}
+
+export async function fetchBookings(): Promise<{ bookings: BookingRecord[] }> {
+  const res = await fetch(`${API_BASE_URL}/bookings`);
+  return handleResponse<{ bookings: BookingRecord[] }>(res);
+}
+
 export async function fetchActiveCampaign(): Promise<{
   campaign: (CampaignRecord & { is_active?: string; approved_at?: string; evaluation_window_days?: string }) | null;
 }> {

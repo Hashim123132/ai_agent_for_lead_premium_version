@@ -45,7 +45,6 @@ const animateCounter = (
 export default function SocialProof() {
   const sectionRef = useRef<HTMLElement>(null)
   const logoStripRef = useRef<HTMLDivElement>(null)
-  const testimonialRef = useRef<HTMLDivElement>(null)
   const statNumberRefs = useRef<(HTMLSpanElement | null)[]>([])
 
   useEffect(() => {
@@ -57,21 +56,6 @@ export default function SocialProof() {
           y: 20,
           duration: 0.5,
           stagger: 0.1,
-          ease: 'power2.out',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top 80%',
-            once: true,
-          },
-        })
-      }
-
-      // Testimonial animation
-      if (testimonialRef.current) {
-        gsap.from(testimonialRef.current, {
-          opacity: 0,
-          y: 20,
-          duration: 0.6,
           ease: 'power2.out',
           scrollTrigger: {
             trigger: sectionRef.current,
@@ -144,25 +128,9 @@ export default function SocialProof() {
           ))}
         </div>
 
-        {/* Part 2: Testimonial */}
+        {/* Part 2: Stats Counter */}
         <div className="w-16 h-px bg-border mx-auto my-12" />
 
-        <div ref={testimonialRef} className="text-center">
-          <span className="quote-mark block" aria-hidden="true">
-            &ldquo;
-          </span>
-          <p className="text-2xl md:text-3xl font-semibold text-center text-foreground max-w-3xl mx-auto italic -mt-6">
-            FleetOps cut our response time from hours to seconds. Our booking rate
-            jumped 40% in the first month.
-          </p>
-          <p className="text-muted-foreground text-center mt-6 text-sm">
-            — Operations Manager, FleetCo
-          </p>
-        </div>
-
-        <div className="w-16 h-px bg-border mx-auto mt-12" />
-
-        {/* Part 3: Stats Counter */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-12">
           {stats.map((stat, index) => (
             <div key={stat.label} className="text-center">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -9,15 +9,12 @@ import { useTheme } from "next-themes"
 import {
   LayoutDashboard,
   Megaphone,
-  Search,
   History,
   Settings,
-  Menu,
-  X,
-  Car,
   Newspaper,
   DollarSign,
   Users,
+  Car,
   Sun,
   Moon,
   ChevronDown,
@@ -42,18 +39,18 @@ const pricingItems: NavItem[] = [
 
 const leadsItems: NavItem[] = [
   { href: "/leads", label: "Leads", icon: Users },
+  { href: "/bookings", label: "Bookings", icon: Car },
 ]
 
 const bottomItems: NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ]
 
-function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string; onClick?: () => void }) {
+function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   const active = pathname === item.href || pathname.startsWith(item.href + "/")
   return (
     <Link
       href={item.href}
-      onClick={onClick}
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
@@ -67,12 +64,15 @@ function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string;
   )
 }
 
-function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => void }) {
-  const [mounted, setMounted] = useState(false)
+function SidebarContent({ pathname }: { pathname: string }) {
   const [groupOpen, setGroupOpen] = useState(true)
   const { theme, setTheme } = useTheme()
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
-  useEffect(() => { setMounted(true) }, [])
   const groupActive = campaignItems.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + "/")
   )
@@ -90,7 +90,7 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
       <Separator />
       <nav className="flex flex-col gap-1 p-3 flex-1">
         {topItems.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
+          <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
 
         <div>
@@ -115,7 +115,6 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={onNav}
                     className={cn(
                       "flex items-center gap-2.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
                       active
@@ -134,16 +133,16 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
 
         <div className="mt-1 border-t border-border pt-1">
           {pricingItems.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
+            <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
         </div>
 
         {leadsItems.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
+          <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
 
         {bottomItems.map((item) => (
-          <NavLink key={item.href} item={item} pathname={pathname} onClick={onNav} />
+          <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
       </nav>
       <div className="border-t p-3">
@@ -161,44 +160,10 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const [open, setOpen] = useState(false)
 
   return (
-    <>
-      <aside className="hidden w-56 shrink-0 border-r border-border bg-sidebar md:flex md:flex-col">
-        <SidebarContent pathname={pathname} />
-      </aside>
-
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed left-4 top-3 z-40 flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground md:hidden"
-        aria-label="Open menu"
-      >
-        <Menu className="size-4" />
-      </button>
-
-      {open && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="flex-1 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="flex w-64 flex-col border-r border-border bg-sidebar">
-            <div className="flex h-14 items-center justify-between px-4">
-              <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
-                  A
-                </div>
-                <span className="font-semibold text-sidebar-foreground">Fleetops</span>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="flex size-7 items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <SidebarContent pathname={pathname} onNav={() => setOpen(false)} />
-          </aside>
-        </div>
-      )}
-    </>
+    <aside className="hidden w-56 shrink-0 border-r border-border bg-sidebar md:flex md:flex-col">
+      <SidebarContent pathname={pathname} />
+    </aside>
   )
 }

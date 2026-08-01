@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
+import Link from 'next/link'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Check } from 'lucide-react'
@@ -218,20 +219,21 @@ export default function Pricing() {
 
                 {/* CTA Button */}
                 <Button
+                  asChild={plan.cta === 'Get Started'}
                   className={`w-full ${
                     plan.highlighted
                       ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                      : ''
-                  } ${
-                    !plan.highlighted && plan.monthlyPrice !== null
-                      ? ''
                       : ''
                   } ${
                     plan.monthlyPrice === null ? 'bg-card border border-border text-foreground hover:bg-accent' : ''
                   }`}
                   variant={plan.monthlyPrice === null ? 'outline' : 'default'}
                 >
-                  {plan.cta}
+                  {plan.cta === 'Get Started' ? (
+                    <Link href="/dashboard">{plan.cta}</Link>
+                  ) : (
+                    plan.cta
+                  )}
                 </Button>
 
                 {/* Divider */}

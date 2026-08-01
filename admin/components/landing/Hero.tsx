@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import {
@@ -209,13 +210,13 @@ export default function Hero() {
             maintenance, and damage detection — all from a single platform.
           </p>
 
-          <a
-            href="#get-started"
+          <Link
+            href="/dashboard"
             className="mt-10 inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-full text-base font-semibold hover:shadow-lg transition-all"
           >
             Get Started
             <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </div>
 
         {/* ---- Constellation ---- */}

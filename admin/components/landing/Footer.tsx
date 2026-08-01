@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="border-t border-border bg-background">
@@ -89,20 +91,20 @@ export default function Footer() {
             </h4>
             <ul>
               <li>
-                <a
-                  href="#"
+                <Link
+                  href="/privacy-policy"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors block py-1.5"
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
+                <Link
+                  href="/terms-of-service"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors block py-1.5"
                 >
                   Terms of Service
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

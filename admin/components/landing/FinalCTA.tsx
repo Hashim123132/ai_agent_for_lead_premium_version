@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Button } from '@/components/ui/button'
@@ -55,11 +56,14 @@ export default function FinalCTA() {
         </p>
         <div className="cta-reveal flex justify-center gap-4 mt-10">
           <Button
+            asChild
             size="lg"
             className="bg-primary text-primary-foreground px-8 py-3.5 rounded-full text-base font-semibold hover:shadow-lg transition-all inline-flex items-center gap-2"
           >
-            Get Started
-            <ArrowRight className="h-4 w-4" />
+            <Link href="/dashboard">
+              Get Started
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
           <Button
             variant="outline"

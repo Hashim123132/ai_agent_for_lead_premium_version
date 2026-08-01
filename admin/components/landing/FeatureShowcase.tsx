@@ -92,7 +92,7 @@ const features: Feature[] = [
       'Analyzes demand, occupancy, booking trends, and competitor pricing to recommend optimal rental prices.',
     tags: ['Demand-Based', 'Competitor Pricing', 'Revenue'],
     icon: DollarSign,
-    image: '/images/features/dynamic-pricing.png',
+    image: '/images/features/pricing-agent.png',
   },
   {
     id: 4,
