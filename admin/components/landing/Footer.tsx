@@ -106,6 +106,14 @@ export default function Footer() {
                   Terms of Service
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/data-deletion"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors block py-1.5"
+                >
+                  Data Deletion
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

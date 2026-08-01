@@ -18,6 +18,8 @@ export const metadata: Metadata = {
  * - Section 11 (Children): service is not directed at children, but verify age verification.
  * - Section 14 (Governing Law): company is based in Lahore, Pakistan; confirm governing law
  *   clause and EU territorial scope with counsel.
+ * - Section 15 (Meta API Data): confirm the permission scopes requested by the Facebook app
+ *   match the data categories listed, and that no other Meta API data is stored.
  * This document is informational and does not constitute legal advice.
  */
 
@@ -123,7 +125,9 @@ export default function PrivacyPolicyPage() {
             items={[
               "Contact details: your name, phone number, and email address.",
               "Booking details: the car you choose, pickup location, pickup time, and return time.",
-              "Conversation data: messages you send us through Facebook Messenger, including any details you share about your rental needs.",
+              "Facebook Messenger messages: your conversations with us via the Messenger API, including any booking details you share in chat.",
+              "Facebook Page insights and analytics: impressions, reach, engagement, follower counts, and post performance we access through the Facebook Graph API.",
+              "Leads from Facebook: information submitted through Facebook lead forms and lead-generation features tied to our Page.",
               "Usage data: how you interact with our Service, such as which pages you visit and which features you use.",
               "Device information: your device type, operating system, browser, and IP address.",
             ]}
@@ -335,6 +339,31 @@ export default function PrivacyPolicyPage() {
           </List>
           {/* LEGAL REVIEW REQUIRED: confirm the governing law clause and jurisdiction with
           counsel, particularly regarding the GDPR territorial scope (Art. 3). */}
+        </Section>
+
+        {/* 15. Data Collected Through Facebook (Meta) APIs */}
+        <Section id="meta-api-data" title="15. Data Collected Through Facebook (Meta) APIs">
+          <Paragraph>
+            Our Service integrates with Facebook products (Messenger and Pages). Through the
+            Facebook Graph and Messenger APIs, and only with the permissions granted by the
+            page administrator, we access and store the following categories of data:
+          </Paragraph>
+          <List
+            items={[
+              "Messages: the content of conversations customers send us through Facebook Messenger, along with sender identifiers and timestamps, used to process bookings and follow-ups.",
+              "Page insights: aggregated analytics about our Facebook Page, including impressions, reach, engagement, follower counts, and views, used to measure marketing performance.",
+              "Page posts: our own Page posts and their performance metrics (reactions, comments, shares), used to evaluate content and improve outreach.",
+              "Leads: information submitted through Facebook lead forms associated with our Page, such as name and contact details, used to follow up on potential customers.",
+            ]}
+          />
+          <Paragraph>
+            {/* LEGAL REVIEW REQUIRED: confirm the permission scopes requested by the app match
+            this list and that access is limited to data needed for the purposes described. */}
+            We only access data we need to provide and improve the Service, and we do not use
+            Facebook data for advertising or for any purpose outside this policy. Your use of
+            Facebook, Messenger, and Instagram is additionally governed by Meta&rsquo;s own terms
+            and privacy policies.
+          </Paragraph>
         </Section>
 
       </main>
