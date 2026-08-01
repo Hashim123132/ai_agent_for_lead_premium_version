@@ -180,6 +180,63 @@ uv run langgraph dev
 
 ---
 
+## Deploy to Render
+
+The backend is a Dockerized FastAPI service. `render.yaml` contains the
+Blueprint (service definition); env var *values* are set in the Render
+dashboard, not committed.
+
+### Required environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `TAVILY_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY` | LLM / search keys |
+| `LANGCHAIN_API_KEY`, `LANGCHAIN_TRACING_V2`, `LANGCHAIN_PROJECT`, `LANGSMITH_API_KEY` | LangSmith tracing |
+| `COMPOSIO_API_KEY` | Composio (Calendar/Gmail tools) |
+| `GOOGLE_SHEET_ID` | Google Sheets spreadsheet id |
+| `GOOGLE_CREDENTIALS_JSON` | **Full JSON content of `credentials.json`** (single line). Used instead of the local file on Render |
+| `FB_VERIFY_TOKEN` | Facebook webhook verify token |
+| `FB_PAGE_ACCESS_TOKEN` | Facebook page access token |
+| `FB_APP_SECRET` | Facebook app secret |
+| `CRON_SECRET` | Optional; protects `POST /tasks/followups` (manual trigger of the follow-up check) |
+
+### Deploy steps
+
+1. Push the repo to GitHub.
+2. In Render: **New + → Blueprint** → select the repo (uses `render.yaml`),
+   or **New + → Web Service** with runtime *Docker* and `dockerfilePath: ./Dockerfile`.
+3. Set all env vars above in the service's **Environment** tab
+   (`GOOGLE_CREDENTIALS_JSON` = content of your `credentials.json` on one line).
+4. Health check path: `/health`.
+5. Deploy. The service gets an HTTPS URL, e.g. `https://car-agent-backend.onrender.com`.
+
+### Connect Facebook Messenger
+
+Set the webhook callback in your Meta App to:
+
+```
+https://<YOUR-SERVICE>.onrender.com/facebook/webhook
+```
+
+with the verify token = `FB_VERIFY_TOKEN`.
+
+### Point the admin frontend at the backend
+
+```bash
+# admin/.env.local
+NEXT_PUBLIC_API_URL=https://<YOUR-SERVICE>.onrender.com
+```
+
+### Follow-ups
+
+The follow-up loop runs in-process every 15 minutes and persists state in the
+**FollowUps** tab of Google Sheets, so redeploys/restarts don't lose tracked
+conversations. Note: on Render's free/Starter tiers instances idle out when
+inactive; use a paid plan (or a manual `POST /tasks/followups?token=...`)
+for reliable delivery timing.
+
+---
+
 ## Project Structure
 
 ```

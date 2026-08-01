@@ -8,22 +8,31 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Response, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 import requests
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, Request, Response, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from booking_agent import booking_agent_graph
 from booking_agent.followup import FollowupManager
 from lead_gen_agent import lead_gen_agent_graph
 from marketing_agent import marketing_agent_graph
 from pricing_agent import pricing_agent_graph
-from shared.ad_suggestions import analyze_ads, search_relevant_ads
-from shared.business_profile import format_profile_for_prompt, get_profile, update_profile
-from shared.campaign_service import approve_campaign, evaluate_campaign, get_active_campaign, list_campaigns, reject_campaign, save_campaign
-from shared.integrations.sheets_client import get_all_records
-from shared.metrics_service import get_metrics_range, save_daily_metrics
+from shared.business_profile import (
+    format_profile_for_prompt,
+    get_profile,
+    update_profile,
+)
+from shared.campaign_service import (
+    approve_campaign,
+    evaluate_campaign,
+    get_active_campaign,
+    list_campaigns,
+    reject_campaign,
+    save_campaign,
+)
+from shared.facebook_analysis import analyze_posts, generate_caption
 from shared.facebook_insights_service import (
     compute_post_summary,
     get_all_posts,
@@ -31,8 +40,9 @@ from shared.facebook_insights_service import (
     sync_page_insights,
     sync_posts,
 )
-from shared.facebook_analysis import analyze_posts, generate_caption
 from shared.integrations.facebook_client import FacebookClient
+from shared.integrations.sheets_client import get_all_records
+from shared.metrics_service import get_metrics_range, save_daily_metrics
 
 load_dotenv()
 
@@ -54,6 +64,7 @@ app.add_middleware(
 
 VERIFY_TOKEN = os.getenv("FB_VERIFY_TOKEN", "hashim_webhook_123")
 PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
+CRON_SECRET = os.getenv("CRON_SECRET", "")
 API_VERSION = "v18.0"
 
 followup_manager = FollowupManager(
@@ -333,13 +344,17 @@ async def run_pricing(request: Request):
     market = body.get("market", {})
     city = market.get("city", "")
     country = market.get("country", "")
+    focus = body.get("focus", "").strip()
 
     logger.info("Pricing agent invoked | market: %s, %s", city, country)
 
     async def event_stream():
+        user_message = f"Analyze current pricing for {city}, {country}. Generate pricing recommendations."
+        if focus:
+            user_message += f"\nUser focus for this analysis: {focus}"
         state = {
             "messages": [
-                ("user", f"Analyze current pricing for {city}, {country}. Generate pricing recommendations.")
+                ("user", user_message)
             ],
             "market": {"city": city, "country": country},
         }
@@ -665,39 +680,6 @@ async def business_profile_put(request: Request):
         return {"status": "error", "error": str(e)}
 
 
-@app.post("/ad-suggestions/search")
-async def ad_suggestions_search(request: Request):
-    """Search relevant ad images + AI pattern analysis via SSE."""
-    body = await request.json()
-    profile = get_profile()
-    country = body.get("country", "") or profile.get("country", "")
-    city = body.get("city", "") or profile.get("city", "")
-    goal = body.get("goal", "") or profile.get("business_goals", "")
-    mode = body.get("mode", "web")
-
-    logger.info(
-        "Ad suggestions search: mode=%s city=%s country=%s goal=%s",
-        mode,
-        city,
-        country,
-        goal,
-    )
-
-    async def event_stream():
-        try:
-            ads = await search_relevant_ads(mode, city, country, goal)
-            yield f"data: {json.dumps({'type': 'ads', 'ads': ads})}\n\n"
-
-            analysis = await analyze_ads(ads, mode, city, country, goal, profile=profile)
-            yield f"data: {json.dumps({'type': 'analysis', 'analysis': analysis})}\n\n"
-
-        except Exception as e:
-            logger.error("Ad suggestions error: %s", e, exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-
-
 # ---------------------------------------------------------------------------
 # Facebook Page Insights & Posting
 # ---------------------------------------------------------------------------
@@ -781,6 +763,24 @@ async def fb_publish(
 @app.get("/health")
 async def health():
     return {"status": "ok", "agent": booking_agent_graph.name}
+
+
+@app.post("/tasks/followups")
+async def run_followups(request: Request):
+    """Run one follow-up check pass.
+
+    Protected by CRON_SECRET; intended to be triggered by an external
+    scheduler (e.g. Google Cloud Scheduler).
+    """
+    token = request.query_params.get("token", "")
+    if not CRON_SECRET or token != CRON_SECRET:
+        return JSONResponse(content={"status": "error", "error": "Unauthorized"}, status_code=401)
+
+    if not followup_manager:
+        return {"status": "ok", "checked": 0, "sent": 0, "removed": 0}
+
+    summary = await asyncio.to_thread(followup_manager.check_once)
+    return {"status": "ok", **summary}
 
 
 @app.on_event("startup")

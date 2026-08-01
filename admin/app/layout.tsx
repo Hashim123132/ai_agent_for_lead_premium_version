@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "BookFlow",
+  title: "Fleetops",
   description: "Booking & Campaign Management",
 };
 

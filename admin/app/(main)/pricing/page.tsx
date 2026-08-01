@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { generatePricingRecommendation, fetchBusinessProfile } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,6 +81,7 @@ const PROGRESS_STEPS = [
 export default function PricingPage() {
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
+  const [focus, setFocus] = useState("");
   const [loading, setLoading] = useState(false);
   const [progressMsg, setProgressMsg] = useState("");
   const [recommendation, setRecommendation] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export default function PricingPage() {
         (msg) => {
           setProgressMsg(msg);
         },
+        focus,
       );
       setRecommendation(result);
     } catch (e) {
@@ -171,6 +174,17 @@ export default function PricingPage() {
                 searchPlaceholder="Search city..."
               />
             </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              AI Focus <span className="font-normal">(optional prompt — what should the agent focus on?)</span>
+            </label>
+            <Textarea
+              value={focus}
+              onChange={(e) => setFocus(e.target.value)}
+              placeholder="e.g. Focus on competitor pricing in Dubai and recommend increases for SUVs during peak season"
+              rows={2}
+            />
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>

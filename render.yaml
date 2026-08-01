@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: car-agent-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    numInstances: 1
+    # Values for the keys below are set in the Render dashboard
+    # (Service > Environment). GOOGLE_CREDENTIALS_JSON must contain the
+    # full JSON content of credentials.json on a single line.
+    envVars:
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: LANGCHAIN_API_KEY
+        sync: false
+      - key: LANGCHAIN_TRACING_V2
+        sync: false
+      - key: LANGCHAIN_PROJECT
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: COMPOSIO_API_KEY
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+      - key: FB_VERIFY_TOKEN
+        sync: false
+      - key: FB_PAGE_ACCESS_TOKEN
+        sync: false
+      - key: FB_APP_SECRET
+        sync: false
+      - key: CRON_SECRET
+        sync: false

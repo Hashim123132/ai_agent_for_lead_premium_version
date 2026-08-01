@@ -16,7 +16,6 @@ import {
   X,
   Car,
   Newspaper,
-  Lightbulb,
   DollarSign,
   Users,
   Sun,
@@ -35,7 +34,6 @@ const topItems: NavItem[] = [
 const campaignItems: NavItem[] = [
   { href: "/campaigns", label: "Campaigns", icon: Newspaper },
   { href: "/campaigns/history", label: "History", icon: History },
-  { href: "/ad-suggestions", label: "Ad Suggestions", icon: Lightbulb },
 ]
 
 const pricingItems: NavItem[] = [
@@ -86,7 +84,7 @@ function SidebarContent({ pathname, onNav }: { pathname: string; onNav?: () => v
           A
         </div>
         <span className="font-semibold text-sidebar-foreground">
-          BookFlow
+          Fleetops
         </span>
       </div>
       <Separator />
@@ -188,7 +186,7 @@ export default function Sidebar() {
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
                   A
                 </div>
-                <span className="font-semibold text-sidebar-foreground">BookFlow</span>
+                <span className="font-semibold text-sidebar-foreground">Fleetops</span>
               </div>
               <button
                 onClick={() => setOpen(false)}

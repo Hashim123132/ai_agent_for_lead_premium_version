@@ -2,17 +2,18 @@
 
 import os
 from datetime import datetime
+
 import gspread
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 from langchain_core.tools import tool
+
+from shared.integrations.sheets_client import load_google_credentials
 
 load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
 
 
 @tool
@@ -37,10 +38,7 @@ def save_booking(
         return_time: Return date and time in ISO format.
     """
     try:
-        creds = Credentials.from_service_account_file(
-            GOOGLE_CREDENTIALS_FILE,
-            scopes=SCOPES,
-        )
+        creds = load_google_credentials(SCOPES)
 
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_key(GOOGLE_SHEET_ID)

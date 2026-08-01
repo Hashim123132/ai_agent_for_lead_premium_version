@@ -46,6 +46,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --color-emerald-accent: #059669;
+  --color-emerald-accent-light: #10B981;
+  --color-emerald-accent-dark: #047857;
 }
 
 :root {
@@ -123,8 +126,91 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: clip;
   }
   html {
     @apply font-sans;
+    overflow-x: clip;
   }
+}
+
+/* ── Landing page custom classes ───────────────────────────────────── */
+
+/* Alternating light section background */
+.section-bg-light {
+  background-color: oklch(0.975 0 0);
+}
+.dark .section-bg-light {
+  background-color: oklch(0.18 0 0);
+}
+
+/* Hero grid background — subtle dot-grid overlay */
+.hero-grid-bg {
+  background-image:
+    linear-gradient(to right, oklch(0 0 0 / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0 0 0 / 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.dark .hero-grid-bg {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Constellation core sphere */
+.constellation-core {
+  background: radial-gradient(ellipse at 30% 35%, oklch(0.16 0 0), oklch(0 0 0));
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 0.08),
+    0 8px 40px oklch(0 0 0 / 0.40),
+    inset 0 1px 0 oklch(1 0 0 / 0.15);
+}
+
+/* Constellation node pills */
+.constellation-node {
+  background: oklch(0 0 0);
+  color: oklch(1 0 0);
+  border: 1px solid oklch(1 0 0 / 0.18);
+  box-shadow:
+    0 4px 16px oklch(0 0 0 / 0.35),
+    0 2px 6px oklch(0 0 0 / 0.18);
+  backdrop-filter: blur(4px);
+}
+.dark .constellation-node {
+  background: oklch(1 0 0);
+  color: oklch(0 0 0);
+  border-color: oklch(0 0 0 / 0.12);
+  box-shadow:
+    0 4px 16px oklch(0 0 0 / 0.55),
+    0 2px 6px oklch(0 0 0 / 0.35);
+}
+
+/* SVG connector lines */
+.connector-line {
+  stroke: oklch(0 0 0 / 0.28);
+  stroke-width: 3;
+}
+.dark .connector-line {
+  stroke: oklch(1 0 0 / 0.28);
+}
+
+/* Outer gray orbit circle passing through the pills */
+.constellation-orbit {
+  stroke: oklch(0 0 0 / 0.18);
+  stroke-width: 1.5;
+}
+.dark .constellation-orbit {
+  stroke: oklch(1 0 0 / 0.15);
+}
+
+/* Quote mark for SocialProof */
+.quote-mark {
+  font-size: 5rem;
+  line-height: 1;
+  color: oklch(0.7 0 0 / 0.25);
+  font-family: Georgia, serif;
+}
+.dark .quote-mark {
+  color: oklch(0.7 0 0 / 0.20);
 }

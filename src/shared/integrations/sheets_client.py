@@ -1,5 +1,6 @@
 """Shared Google Sheets client wrapper."""
 
+import json
 import os
 from functools import lru_cache
 
@@ -19,12 +20,25 @@ class SheetsClientError(Exception):
     """Raised when a Google Sheets operation fails."""
 
 
+def load_google_credentials(scopes: list[str]) -> Credentials:
+    """Load Google service-account credentials.
+
+    Prefers the GOOGLE_CREDENTIALS_JSON env var (full JSON content, used on
+    platforms like Render that cannot mount files); falls back to the local
+    GOOGLE_CREDENTIALS_FILE.
+    """
+    env_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if env_json:
+        return Credentials.from_service_account_info(
+            json.loads(env_json),
+            scopes=scopes,
+        )
+    return Credentials.from_service_account_file(GOOGLE_CREDENTIALS_FILE, scopes=scopes)
+
+
 @lru_cache(maxsize=1)
 def _get_client() -> gspread.Client:
-    creds = Credentials.from_service_account_file(
-        GOOGLE_CREDENTIALS_FILE,
-        scopes=SCOPES,
-    )
+    creds = load_google_credentials(SCOPES)
     return gspread.authorize(creds)
 
 

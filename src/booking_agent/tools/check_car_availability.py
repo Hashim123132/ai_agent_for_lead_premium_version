@@ -1,17 +1,18 @@
 """Tool to check if a specific car is available in Google Sheets."""
 
 import os
+
 import gspread
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
 from langchain_core.tools import tool
+
+from shared.integrations.sheets_client import load_google_credentials
 
 load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
 GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
-GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "credentials.json")
 
 
 @tool
@@ -22,10 +23,7 @@ def check_car_availability(car_name: str) -> str:
         car_name: The name of the car to check (e.g. "Toyota Corolla").
     """
     try:
-        creds = Credentials.from_service_account_file(
-            GOOGLE_CREDENTIALS_FILE,
-            scopes=SCOPES,
-        )
+        creds = load_google_credentials(SCOPES)
 
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_key(GOOGLE_SHEET_ID)
