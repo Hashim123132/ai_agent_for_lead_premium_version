@@ -179,6 +179,7 @@ async function readSSEStream(
   const decoder = new TextDecoder();
   let buffer = "";
   let result: { response: string; campaign_id?: string } | null = null;
+  let lastProgress = "";
 
   while (true) {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -193,27 +194,37 @@ async function readSSEStream(
       const trimmed = line.trim();
       if (!trimmed.startsWith("data: ")) continue;
 
+      let payload: Record<string, unknown> | null = null;
       try {
-        const payload = JSON.parse(trimmed.slice(6));
-
-        if (payload.type === "progress" && onProgress) {
-          onProgress(payload.message);
-        } else if (payload.type === "result") {
-          result = payload;
-        } else if (payload.type === "error") {
-          throw new Error(payload.error || "SSE error");
-        } else if (payload.type === "lead" && onLead) {
-          onLead(payload.lead);
-        } else if (payload.type === "leads" && onLeads) {
-          onLeads(payload.leads);
-        }
+        payload = JSON.parse(trimmed.slice(6));
       } catch {
-        // skip malformed lines
+        continue;
+      }
+      if (!payload) continue;
+
+      if (payload.type === "error") {
+        throw new Error((payload.error as string) || "SSE error");
+      }
+      if (payload.type === "result") {
+        result = payload as { response: string; campaign_id?: string };
+      } else if (payload.type === "progress" && onProgress) {
+        lastProgress = (payload.message as string) || "";
+        onProgress(payload.message as string);
+      } else if (payload.type === "lead" && onLead) {
+        onLead(payload.lead as Lead);
+      } else if (payload.type === "leads" && onLeads) {
+        onLeads(payload.leads as Lead[]);
       }
     }
   }
 
-  if (!result) throw new Error("Stream ended without a result");
+  if (!result) {
+    throw new Error(
+      lastProgress
+        ? `Generation interrupted while "${lastProgress}" — connection lost or server timed out. Try again.`
+        : "Generation interrupted — connection lost or server timed out. Try again.",
+    );
+  }
   return result;
 }
 

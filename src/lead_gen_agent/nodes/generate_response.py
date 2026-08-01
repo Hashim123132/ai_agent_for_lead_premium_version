@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI
 
-from lead_gen_agent.nodes._tools import lead_gen_tools
+from lead_gen_agent.nodes._tools import MAX_TOOL_ROUNDS, lead_gen_tools
 from lead_gen_agent.prompts import LEAD_GEN_SYSTEM
 from lead_gen_agent.state import LeadGenAgentState
 
@@ -75,12 +75,23 @@ async def generate_response(
         max_tokens=60000,
     )
 
+    messages_for_llm = [{"role": "system", "content": system_message}, *trimmed]
+
+    if state.get("tool_rounds", 0) >= MAX_TOOL_ROUNDS:
+        messages_for_llm.append({
+            "role": "user",
+            "content": (
+                "You have reached the tool-call limit for this run. "
+                "Provide your best final answer now using the information gathered so far."
+            ),
+        })
+        model_to_use = model
+    else:
+        model_to_use = model_with_tools
+
     response = cast(
         AIMessage,
-        await model_with_tools.ainvoke(
-            [{"role": "system", "content": system_message}, *trimmed],
-            config,
-        ),
+        await model_to_use.ainvoke(messages_for_llm, config),
     )
 
     return {"messages": [response]}

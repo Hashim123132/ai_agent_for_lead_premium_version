@@ -88,6 +88,19 @@ PROGRESS_LABELS = {
 }
 
 
+async def _sse_events_with_heartbeat(events, interval: float = 15.0):
+    """Yield SSE events, emitting keepalive comment pings whenever the stream is idle."""
+    while True:
+        try:
+            ev = await asyncio.wait_for(events.__anext__(), timeout=interval)
+        except StopAsyncIteration:
+            return
+        except asyncio.TimeoutError:
+            yield ": ping\n\n"
+            continue
+        yield ev
+
+
 def _extract_section(text: str, section_name: str, next_section_pattern: str) -> str | None:
     pattern = rf'{re.escape(section_name)}\s*\n(.*?)(?=\n\s*(?:{next_section_pattern})\s*\n|\Z)'
     m = re.search(pattern, text, re.DOTALL)
@@ -285,7 +298,7 @@ async def run_marketing(request: Request):
 
     logger.info("Marketing agent invoked with prompt: %s | market: %s, %s", prompt[:100], city, country)
 
-    async def event_stream():
+    async def agent_events():
         state = {
             "messages": [("user", enriched_prompt)],
             "market": {"city": city or profile.get("city", ""), "country": country or profile.get("country", "")},
@@ -328,6 +341,7 @@ async def run_marketing(request: Request):
                 return
 
             campaign_id = save_campaign(prompt, response_text, city=city, country=country)
+            logger.info("Marketing agent completed: campaign_id=%s", campaign_id)
             result = json.dumps({
                 "type": "result",
                 "status": "ok",
@@ -341,7 +355,9 @@ async def run_marketing(request: Request):
             err = json.dumps({"type": "error", "error": str(e)})
             yield f"data: {err}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        _sse_events_with_heartbeat(agent_events()), media_type="text/event-stream"
+    )
 
 
 @app.post("/pricing/generate")
@@ -355,7 +371,7 @@ async def run_pricing(request: Request):
 
     logger.info("Pricing agent invoked | market: %s, %s", city, country)
 
-    async def event_stream():
+    async def agent_events():
         user_message = f"Analyze current pricing for {city}, {country}. Generate pricing recommendations."
         if focus:
             user_message += f"\nUser focus for this analysis: {focus}"
@@ -407,6 +423,7 @@ async def run_pricing(request: Request):
                 "status": "ok",
                 "response": response_text,
             })
+            logger.info("Pricing agent completed successfully")
             yield f"data: {result}\n\n"
 
         except Exception as e:
@@ -414,7 +431,9 @@ async def run_pricing(request: Request):
             err = json.dumps({"type": "error", "error": str(e)})
             yield f"data: {err}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        _sse_events_with_heartbeat(agent_events()), media_type="text/event-stream"
+    )
 
 
 @app.post("/leads/generate")
@@ -428,7 +447,7 @@ async def run_lead_gen(request: Request):
 
     logger.info("Lead gen agent invoked | market: %s, %s | query: %s", city, country, query[:100])
 
-    async def event_stream():
+    async def agent_events():
         user_msg = f"Find business partners in {city}, {country}." if not query else query
         state = {
             "messages": [("user", user_msg)],
@@ -495,6 +514,7 @@ async def run_lead_gen(request: Request):
             if parsed:
                 yield f"data: {json.dumps({'type': 'leads', 'leads': parsed})}\n\n"
 
+            logger.info("Lead gen agent completed with %d parsed leads", len(parsed))
             result = json.dumps({
                 "type": "result",
                 "status": "ok",
@@ -507,7 +527,9 @@ async def run_lead_gen(request: Request):
             err = json.dumps({"type": "error", "error": str(e)})
             yield f"data: {err}\n\n"
 
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        _sse_events_with_heartbeat(agent_events()), media_type="text/event-stream"
+    )
 
 
 @app.post("/leads/save")
