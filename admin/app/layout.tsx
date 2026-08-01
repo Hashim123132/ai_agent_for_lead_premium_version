@@ -6,6 +6,12 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "Fleetops",
   description: "Booking & Campaign Management",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+  },
 };
 
 export default function RootLayout({
