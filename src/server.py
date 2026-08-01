@@ -241,6 +241,8 @@ async def _handle_message(sender_id: str, text: str):
             },
         )
         logger.info("[%s] Reply sent (status %s)", sender_id, resp.status_code)
+        if resp.status_code != 200:
+            logger.error("[%s] Reply failed: %s", sender_id, resp.text[:500])
 
     except Exception as e:
         logger.error("[%s] Error: %s", sender_id, e, exc_info=True)

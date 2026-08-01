@@ -183,6 +183,10 @@ class FollowupManager:
                 resp.status_code,
                 message[:60],
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "[followup] Send failed for %s: %s", sender_id, resp.text[:500]
+                )
             return resp.status_code == 200
         except Exception as e:
             logger.error("[followup] Send error for %s: %s", sender_id, e)
